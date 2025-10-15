@@ -1,0 +1,84 @@
+import { Request, Response } from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import User from "../models/User";
+import { IUser } from "../types/User";
+
+export const signin = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
+  try {
+    const {
+      email,
+      password,
+      rememberMe,
+    }: { email: string; password: string; rememberMe: boolean } = req.body;
+
+    console.log(req.body);
+
+    const user: IUser | null = (await User.findOne({
+      where: { email },
+    })) as unknown as IUser | null;
+    if (!user) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    const isMatch: boolean = await bcrypt.compare(password, user.password_hash);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    const token: string = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET || "",
+      { expiresIn: rememberMe ? "30d" : "1d" },
+    );
+
+    return res.status(200).json({
+      message: "Signin successful",
+      token,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const me = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || "");
+    } catch (err) {
+      console.log(err);
+      return res.status(401).json({ message: "Invalid token" });
+    }
+
+    const user: IUser | null = (await User.findByPk(
+      decoded.id,
+    )) as unknown as IUser | null;
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
