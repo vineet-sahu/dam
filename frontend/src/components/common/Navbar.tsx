@@ -1,54 +1,82 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useMemo } from "react";
+import { NavLink } from "react-router-dom";
+import { useAuthContext } from "../../context/AuthContext";
 
-interface NavbarProps {
-  isAdmin?: boolean;
-}
+type RouteItem = {
+  path: string;
+  label: string;
+  end?: boolean;
+};
 
-const Navbar: React.FC<NavbarProps> = ({ isAdmin = false }) => {
+const linkClass = ({ isActive }: { isActive: boolean }) =>
+  isActive
+    ? "text-blue-600 font-semibold border-b-2 border-blue-600 pb-1"
+    : "text-gray-700 hover:text-blue-600";
+
+const Navbar: React.FC = React.memo(function Navbar() {
+  const { isLoggedIn, isAdmin } = useAuthContext();
+
+  const baseRoutes: RouteItem[] = useMemo(
+    () => [
+      { path: "/", label: "Home", end: true },
+      { path: "/upload", label: "Upload" },
+      { path: "/gallery", label: "Assets" },
+      { path: "/analytics", label: "Analytics" },
+    ],
+    [],
+  );
+
+  const adminRoutes: RouteItem[] = useMemo(
+    () =>
+      isAdmin
+        ? [
+            { path: "/admin/dashboard", label: "Admin Dashboard" },
+            { path: "/admin/workers", label: "Workers" },
+            { path: "/admin/storage", label: "Storage" },
+            { path: "/admin/users", label: "Users" },
+          ]
+        : [],
+    [isAdmin],
+  );
+
+  const authLinks: RouteItem[] = useMemo(() => {
+    if (isLoggedIn) {
+      return [
+        { path: "/profile", label: "Profile" },
+        { path: "/logout", label: "Logout" },
+      ];
+    }
+    return [
+      { path: "/signin", label: "Sign In" },
+      { path: "/signup", label: "Sign Up" },
+    ];
+  }, [isLoggedIn]);
+
   return (
     <nav className="bg-white shadow-md px-6 py-3 flex justify-between items-center">
       <div className="text-xl font-bold text-gray-800">DAM Platform</div>
-      <ul className="flex space-x-6 text-gray-700 font-medium">
-        <li>
-          <Link to="/">Home</Link>
-        </li>
-        <li>
-          <Link to="/upload">Upload</Link>
-        </li>
-        <li>
-          <Link to="/gallery">Assets</Link>
-        </li>
-        <li>
-          <Link to="/analytics">Analytics</Link>
-        </li>
-        {isAdmin && (
-          <>
-            <li>
-              <Link to="/admin/dashboard">Admin Dashboard</Link>
-            </li>
-            <li>
-              <Link to="/admin/workers">Workers</Link>
-            </li>
-            <li>
-              <Link to="/admin/storage">Storage</Link>
-            </li>
-            <li>
-              <Link to="/admin/users">Users</Link>
-            </li>
-          </>
-        )}
+
+      <ul className="flex space-x-6 font-medium">
+        {[...baseRoutes, ...adminRoutes].map(({ path, label, end }) => (
+          <li key={path}>
+            <NavLink to={path} end={end} className={linkClass}>
+              {label}
+            </NavLink>
+          </li>
+        ))}
       </ul>
-      <div>
-        <Link
-          to="/profile"
-          className="px-3 py-1 rounded-lg hover:bg-gray-100 transition"
-        >
-          Profile
-        </Link>
-      </div>
+
+      <ul className="flex space-x-6 font-medium">
+        {authLinks.map(({ path, label }) => (
+          <li key={path}>
+            <NavLink to={path} className={linkClass}>
+              {label}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
     </nav>
   );
-};
+});
 
 export default Navbar;

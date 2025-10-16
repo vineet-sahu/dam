@@ -18,12 +18,12 @@
   },
   "lint-staged": {
     "frontend/**/*.{ts,tsx}": [
-      "npx eslint --fix",
-      "npx prettier --write"
+      "npx prettier --write",
+      "npx eslint --fix"
     ],
     "backend/**/*.{ts,tsx}": [
-      "npx eslint --fix",
-      "npx prettier --write"
+      "npx prettier --write",
+      "npx eslint --fix"
     ]
   },
   "dependencies": {

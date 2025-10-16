@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSignIn } from "../hooks/useAuth";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useAuthContext } from "../context/AuthContext";
 
 export default function SignInForm() {
   const [formData, setFormData] = useState({
@@ -22,6 +23,7 @@ export default function SignInForm() {
   );
 
   const { mutate, isPending, isError, error, isSuccess } = useSignIn();
+  const { setIsLoggedIn } = useAuthContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get("redirectedTo");
@@ -97,7 +99,9 @@ export default function SignInForm() {
     if (!emailError && !passwordError) {
       mutate(formData, {
         onSuccess: () => {
-          console.log("Sign in successful, redirecting to Home...");
+          if (setIsLoggedIn) {
+            setIsLoggedIn(true);
+          }
           navigate(redirectTo || "/home");
         },
         onError: (err: any) => {
