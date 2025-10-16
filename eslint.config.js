@@ -42,16 +42,13 @@ export default [
       ...reactHooksPlugin.configs.recommended.rules,
       "@typescript-eslint/no-explicit-any": "off",
       "prettier/prettier": "error",
-
-      
+      "no-console": ["error", { "allow": ["warn", "error"] }],
       "no-console": "off",
       "no-debugger": "warn",
       "@typescript-eslint/no-unused-vars": [
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
-
-      
       "react/react-in-jsx-scope": "off", 
       "react/prop-types": "off", 
       "react/jsx-uses-react": "off", 
@@ -87,7 +84,7 @@ export default [
       "@typescript-eslint/no-var-requires": "off",
       "@typescript-eslint/no-explicit-any": "off", 
       "no-process-exit": "off",
-      "no-console": "off",
+      "no-console": ["error", { "allow": ["warn", "error"] }],
       "prettier/prettier": "error",
       "@typescript-eslint/no-unused-vars": [
         "warn",

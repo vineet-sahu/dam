@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express, { Application, Request, Response } from "express";
+import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import morgan from "morgan";
 import routes from "./routes/";
@@ -21,6 +22,7 @@ app.use(corsMiddleware);
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({

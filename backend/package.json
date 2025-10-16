@@ -22,6 +22,7 @@
     "dependencies": {
         "bcryptjs": "^3.0.2",
         "bullmq": "^5.1.5",
+        "cookie-parser": "^1.4.7",
         "cors": "^2.8.5",
         "dotenv": "^16.3.1",
         "express": "^4.18.2",
@@ -41,6 +42,7 @@
         "winston": "^3.11.0"
     },
     "devDependencies": {
+        "@types/cookie-parser": "^1.4.9",
         "@types/cors": "^2.8.19",
         "@types/express": "^5.0.3",
         "@types/jest": "^30.0.0",

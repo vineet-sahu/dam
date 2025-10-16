@@ -1,5 +1,4 @@
 export const Home = () => {
-  console.log("Homme working");
   return (
     <div>
       <h1 className="mt-20">Welcome to the Digital Asset Management System</h1>

@@ -64,7 +64,6 @@ export const Signup = () => {
     if (!validate()) return;
     try {
       await mutateAsync({ name, email, password });
-      console.log("Signup successful, redirecting to login...");
       toast.success("Signup successful, redirecting to login...");
       navigate("/signin");
     } catch (err: any) {

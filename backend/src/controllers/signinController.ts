@@ -15,8 +15,6 @@ export const signin = async (
       rememberMe,
     }: { email: string; password: string; rememberMe: boolean } = req.body;
 
-    console.log(req.body);
-
     const user: IUser | null = (await User.findOne({
       where: { email },
     })) as unknown as IUser | null;
@@ -35,9 +33,16 @@ export const signin = async (
       { expiresIn: rememberMe ? "30d" : "1d" },
     );
 
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000,
+    });
+
     return res.status(200).json({
       message: "Signin successful",
-      token,
+      user: { id: user.id, email: user.email },
     });
   } catch (error) {
     console.error(error);
@@ -47,12 +52,16 @@ export const signin = async (
 
 export const me = async (req: Request, res: Response): Promise<Response> => {
   try {
+    let token: string | undefined;
     const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ message: "No token provided" });
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
     }
 
-    const token = authHeader.split(" ")[1];
+    if (!token && req.cookies?.token) {
+      token = req.cookies.token;
+    }
+
     if (!token) {
       return res.status(401).json({ message: "No token provided" });
     }
@@ -61,7 +70,6 @@ export const me = async (req: Request, res: Response): Promise<Response> => {
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET || "");
     } catch (err) {
-      console.log(err);
       return res.status(401).json({ message: "Invalid token" });
     }
 
