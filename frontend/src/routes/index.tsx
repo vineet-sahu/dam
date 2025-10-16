@@ -4,12 +4,16 @@ import { Dashboard } from "../pages/Dashboard";
 import SignInForm from "../pages/SignIn";
 import { Signup } from "../pages/Signup";
 import ProtectedRoute from "./protectedRoutes";
+import UploadPage from "../pages/Upload";
+import GalleryPage from "../pages/Gallery";
 
 export const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/home" element={<Home />} />
+      <Route path="/upload" element={<UploadPage />} />
+      <Route path="/gallery" element={<GalleryPage />} />
       <Route path="/signIn" element={<SignInForm />} />
       <Route path="/signUp" element={<Signup />} />
       <Route
