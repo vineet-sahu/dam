@@ -1,5 +1,8 @@
+/* eslint-disable no-undef */
 import multer from "multer";
-import type { Request } from "express";
+import type { Request, Response, NextFunction } from "express";
+import minioService from "../services/minioService";
+import logger from "../utils/logger";
 
 const ALLOWED_IMAGE_TYPES = (
   process.env.ALLOWED_IMAGE_TYPES || "image/jpeg,image/png,image/gif,image/webp"
@@ -10,13 +13,24 @@ const ALLOWED_VIDEO_TYPES = (
   "video/mp4,video/mpeg,video/quicktime,video/x-msvideo"
 ).split(",");
 
-const ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES];
+const ALLOWED_DOCUMENT_TYPES = (
+  process.env.ALLOWED_DOCUMENT_TYPES ||
+  "application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
+).split(",");
 
-const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || "524288000");
+const ALLOWED_TYPES = [
+  ...ALLOWED_IMAGE_TYPES,
+  ...ALLOWED_VIDEO_TYPES,
+  ...ALLOWED_DOCUMENT_TYPES,
+];
 
-const storage = multer.memoryStorage();
+const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || "524288000", 10);
 
-const fileFilter = (_: Request, file: any, cb: multer.FileFilterCallback) => {
+const fileFilter = (
+  _: Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback,
+) => {
   if (ALLOWED_TYPES.includes(file.mimetype)) {
     cb(null, true);
   } else {
@@ -28,6 +42,8 @@ const fileFilter = (_: Request, file: any, cb: multer.FileFilterCallback) => {
   }
 };
 
+const storage = multer.memoryStorage();
+
 export const upload = multer({
   storage,
   limits: {
@@ -38,10 +54,110 @@ export const upload = multer({
 });
 
 export const uploadSingle = upload.single("file");
-
 export const uploadMultiple = upload.array("files", 10);
 
-export const handleUploadError = (err: any, _: any, res: any, next: any) => {
+const getBucketForFileType = (mimetype: string): string => {
+  if (ALLOWED_VIDEO_TYPES.includes(mimetype)) {
+    return minioService.buckets.ORIGINALS;
+  }
+  if (ALLOWED_IMAGE_TYPES.includes(mimetype)) {
+    return minioService.buckets.ORIGINALS;
+  }
+  return minioService.buckets.ORIGINALS;
+};
+
+export const processMinioUploadSingle = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No file uploaded",
+      });
+    }
+
+    const bucket = getBucketForFileType(req.file.mimetype);
+
+    const result = await minioService.uploadFile(
+      bucket,
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype,
+    );
+
+    (req as any).minioFile = {
+      ...result,
+      originalName: req.file.originalname,
+      mimetype: req.file.mimetype,
+    };
+
+    logger.info(`File uploaded successfully: ${result.objectName}`);
+    next();
+  } catch (error) {
+    logger.error("MinIO upload error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to upload file to storage",
+    });
+  }
+};
+
+export const processMinioUploadMultiple = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const files = req.files as Express.Multer.File[];
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No files uploaded",
+      });
+    }
+
+    const uploadPromises = files.map(async (file) => {
+      const bucket = getBucketForFileType(file.mimetype);
+
+      const result = await minioService.uploadFile(
+        bucket,
+        file.buffer,
+        file.originalname,
+        file.mimetype,
+      );
+
+      return {
+        ...result,
+        originalName: file.originalname,
+        mimetype: file.mimetype,
+      };
+    });
+
+    const results = await Promise.all(uploadPromises);
+
+    (req as any).minioFiles = results;
+
+    logger.info(`${results.length} files uploaded successfully`);
+    next();
+  } catch (error) {
+    logger.error("MinIO multiple upload error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to upload files to storage",
+    });
+  }
+};
+
+export const handleUploadError = (
+  err: any,
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   if (err instanceof multer.MulterError) {
     if (err.code === "LIMIT_FILE_SIZE") {
       return res.status(400).json({
@@ -55,10 +171,20 @@ export const handleUploadError = (err: any, _: any, res: any, next: any) => {
         message: "Too many files. Maximum: 10 files per request",
       });
     }
-    return res.status(400).json({
-      success: false,
-      message: err.message,
-    });
+    return res.status(400).json({ success: false, message: err.message });
   }
-  next(err);
+
+  if (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+
+  next();
+};
+
+export const cleanupTempFiles = (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) => {
+  next();
 };

@@ -1,46 +1,73 @@
 import { Request, Response } from "express";
 import { Op } from "sequelize";
 import Asset from "../models/Asset";
+import minioService from "../services/minioService";
+import logger from "../utils/logger";
 
 export const createAsset = async (
   req: Request,
   res: Response,
 ): Promise<Response> => {
   try {
-    const {
-      name,
-      type,
-      url,
-      description,
-      metadata,
-    }: {
-      name: string;
-      type: string;
-      url: string;
-      description?: string;
-      metadata?: object;
-    } = req.body;
-
     const userId: string | undefined = req.user?.id;
     if (!userId) {
       return res.status(401).json({ message: "User not authenticated" });
     }
 
-    const newAsset = await Asset.create({
-      name,
-      type,
-      url,
-      description,
-      metadata,
+    const minioFile = (req as any).minioFile;
+    if (!minioFile) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const { name, description, metadata, visibility, tags } = req.body;
+
+    logger.info("MinIO file uploaded:", minioFile);
+    logger.info("Additional form data:", req.body);
+
+    let assetType = "document";
+    if (minioFile.mimetype.startsWith("image/")) {
+      assetType = "image";
+    } else if (minioFile.mimetype.startsWith("video/")) {
+      assetType = "video";
+    } else if (minioFile.mimetype.startsWith("audio/")) {
+      assetType = "audio";
+    }
+
+    const presignedUrl = await minioService.getPresignedUrl(
+      minioFile.bucketName,
+      minioFile.objectName,
+      3600,
+    );
+
+    const newAssetData = {
+      name: name || minioFile.originalName,
+      originalName: minioFile.originalName,
+      filename: minioFile.objectName,
+      type: assetType,
+      mimeType: minioFile.mimetype,
+      url: presignedUrl,
+      size: minioFile.size,
+      storagePath: `${minioFile.bucketName}/${minioFile.objectName}`,
+      description: description || null,
+      metadata: metadata || {},
       owner_id: userId,
-    });
+      visibility: visibility || "private",
+      tags: tags ? (Array.isArray(tags) ? tags : JSON.parse(tags)) : [],
+      status: "completed",
+    };
+
+    logger.info("New asset data to be created:", newAssetData);
+
+    const newAsset = await Asset.create(newAssetData);
+
+    logger.info("New asset created:", newAsset.id);
 
     return res.status(201).json({
       message: "Asset created successfully",
       asset: newAsset,
     });
   } catch (error) {
-    console.error("Error creating asset:", error);
+    logger.error("Error creating asset:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -55,20 +82,26 @@ export const getAllAssets = async (
       limit = 10,
       type,
       search,
+      visibility,
     } = req.query as {
       page?: string;
       limit?: string;
       type?: string;
       search?: string;
+      visibility?: string;
     };
 
     const offset: number = (Number(page) - 1) * Number(limit);
     const where: any = {};
 
     if (type) where.type = type;
+    if (visibility) where.visibility = visibility;
 
     if (search) {
-      where.name = { [Op.iLike]: `%${search}%` };
+      where[Op.or] = [
+        { name: { [Op.iLike]: `%${search}%` } },
+        { description: { [Op.iLike]: `%${search}%` } },
+      ];
     }
 
     const { count, rows } = await Asset.findAndCountAll({
@@ -89,7 +122,7 @@ export const getAllAssets = async (
       },
     });
   } catch (error) {
-    console.error("Error fetching assets:", error);
+    logger.error("Error fetching assets:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -106,13 +139,106 @@ export const getAssetById = async (
       return res.status(404).json({ message: "Asset not found" });
     }
 
+    const [bucketName, objectName] = asset.storagePath.split("/");
+    const freshUrl = await minioService.getPresignedUrl(
+      bucketName,
+      objectName,
+      3600,
+    );
+
     return res.status(200).json({
       message: "Asset retrieved successfully",
-      asset,
+      asset: {
+        ...asset.toJSON(),
+        url: freshUrl,
+      },
     });
   } catch (error) {
-    console.error("Error fetching asset by ID:", error);
+    logger.error("Error fetching asset by ID:", error);
     return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const downloadAsset = async (
+  req: Request,
+  res: Response,
+): Promise<Response> => {
+  try {
+    const { id } = req.params;
+    const expirySeconds = parseInt(req.query.expiry as string) || 3600;
+
+    const asset = await Asset.findByPk(id);
+    if (!asset) {
+      return res.status(404).json({ message: "Asset not found" });
+    }
+
+    const [bucketName, objectName] = asset.storagePath.split("/");
+
+    const downloadUrl = await minioService.getPresignedUrl(
+      bucketName,
+      objectName,
+      expirySeconds,
+    );
+
+    await asset.update({ downloadCount: asset.downloadCount + 1 });
+
+    return res.status(200).json({
+      message: "Download URL generated successfully",
+      url: downloadUrl,
+      expiresIn: expirySeconds,
+      asset: {
+        id: asset.id,
+        name: asset.name,
+        size: asset.size,
+        mimeType: asset.mimeType,
+      },
+    });
+  } catch (error) {
+    logger.error("Error generating download URL:", error);
+    return res.status(500).json({ message: "Failed to generate download URL" });
+  }
+};
+
+export const streamAsset = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const asset = await Asset.findByPk(id);
+    if (!asset) {
+      res.status(404).json({ message: "Asset not found" });
+      return;
+    }
+
+    const [bucketName, objectName] = asset.storagePath.split("/");
+
+    const stats = await minioService.getFileStats(bucketName, objectName);
+    const stream = await minioService.getFile(bucketName, objectName);
+
+    res.setHeader("Content-Type", asset.mimeType);
+    res.setHeader("Content-Length", stats.size);
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${asset.originalName}"`,
+    );
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Cache-Control", "public, max-age=31536000");
+
+    stream.pipe(res);
+
+    stream.on("error", (error) => {
+      logger.error("Stream error:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ message: "Failed to stream file" });
+      }
+    });
+  } catch (error) {
+    logger.error("Error streaming asset:", error);
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Failed to stream asset" });
+    }
   }
 };
 
@@ -122,7 +248,7 @@ export const updateAsset = async (
 ): Promise<Response> => {
   try {
     const { id } = req.params;
-    const { name, type, url, description, metadata } = req.body;
+    const { name, description, metadata, visibility, tags } = req.body;
 
     const asset = await Asset.findByPk(id);
     if (!asset) {
@@ -137,10 +263,10 @@ export const updateAsset = async (
 
     await asset.update({
       name: name ?? asset.name,
-      type: type ?? asset.type,
-      url: url ?? asset.url,
       description: description ?? asset.description,
       metadata: metadata ?? asset.metadata,
+      visibility: visibility ?? asset.visibility,
+      tags: tags ?? asset.tags,
     });
 
     return res.status(200).json({
@@ -148,7 +274,7 @@ export const updateAsset = async (
       asset,
     });
   } catch (error) {
-    console.error("Error updating asset:", error);
+    logger.error("Error updating asset:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -171,11 +297,33 @@ export const deleteAsset = async (
         .json({ message: "Unauthorized to delete this asset" });
     }
 
+    const [bucketName, objectName] = asset.storagePath.split("/");
+
+    try {
+      await minioService.deleteFile(bucketName, objectName);
+      logger.info(`Deleted file from MinIO: ${asset.storagePath}`);
+    } catch (minioError) {
+      logger.error("Error deleting from MinIO:", minioError);
+    }
+
+    if (asset.thumbnailPath) {
+      try {
+        const [thumbBucket, thumbObject] = asset.thumbnailPath.split("/");
+        await minioService.deleteFile(thumbBucket, thumbObject);
+        logger.info(`Deleted thumbnail: ${asset.thumbnailPath}`);
+      } catch (thumbError) {
+        logger.error("Error deleting thumbnail:", thumbError);
+      }
+    }
+
     await asset.destroy();
 
-    return res.status(200).json({ message: "Asset deleted successfully" });
+    return res.status(200).json({
+      message: "Asset deleted successfully",
+      deletedAssetId: id,
+    });
   } catch (error) {
-    console.error("Error deleting asset:", error);
+    logger.error("Error deleting asset:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -190,17 +338,40 @@ export const getAssetsByUser = async (
       return res.status(401).json({ message: "User not authenticated" });
     }
 
-    const assets = await Asset.findAll({
-      where: { owner_id: userId },
+    const {
+      page = 1,
+      limit = 20,
+      type,
+    } = req.query as {
+      page?: string;
+      limit?: string;
+      type?: string;
+    };
+
+    const offset = (Number(page) - 1) * Number(limit);
+    const where: any = { owner_id: userId };
+
+    if (type) where.type = type;
+
+    const { count, rows } = await Asset.findAndCountAll({
+      where,
+      limit: Number(limit),
+      offset,
       order: [["created_at", "DESC"]],
     });
 
     return res.status(200).json({
       message: "User assets retrieved successfully",
-      assets,
+      assets: rows,
+      pagination: {
+        total: count,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(count / Number(limit)),
+      },
     });
   } catch (error) {
-    console.error("Error fetching user assets:", error);
+    logger.error("Error fetching user assets:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -211,18 +382,32 @@ export const getAssetsByType = async (
 ): Promise<Response> => {
   try {
     const { type } = req.params;
+    const { page = 1, limit = 20 } = req.query as {
+      page?: string;
+      limit?: string;
+    };
 
-    const assets = await Asset.findAll({
+    const offset = (Number(page) - 1) * Number(limit);
+
+    const { count, rows } = await Asset.findAndCountAll({
       where: { type },
+      limit: Number(limit),
+      offset,
       order: [["created_at", "DESC"]],
     });
 
     return res.status(200).json({
       message: `Assets of type '${type}' retrieved successfully`,
-      assets,
+      assets: rows,
+      pagination: {
+        total: count,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(count / Number(limit)),
+      },
     });
   } catch (error) {
-    console.error("Error fetching assets by type:", error);
+    logger.error("Error fetching assets by type:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -232,5 +417,9 @@ export default {
   getAllAssets,
   getAssetsByType,
   getAssetsByUser,
+  getAssetById,
   updateAsset,
+  deleteAsset,
+  downloadAsset,
+  streamAsset,
 };

@@ -17,14 +17,7 @@ export const Signup = () => {
   }>({});
 
   const navigate = useNavigate();
-  const {
-    mutateAsync,
-    isPending,
-    // isError,
-    // data,
-    // error: errorData,
-    // isSuccess,
-  } = useSignUp();
+  const { mutateAsync, isPending } = useSignUp();
 
   const validate = () => {
     const errors: typeof fieldErrors = {};
@@ -62,6 +55,7 @@ export const Signup = () => {
     setError(null);
 
     if (!validate()) return;
+
     try {
       await mutateAsync({ name, email, password });
       toast.success("Signup successful, redirecting to login...");
@@ -107,9 +101,9 @@ export const Signup = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-100 via-white to-green-50 px-4">
-      <div className="w-full max-w-md bg-white/80 backdrop-blur-md rounded-2xl shadow-lg p-8 border border-gray-200">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-100 via-white to-green-50 px-4 sm:px-6 md:px-8">
+      <div className="w-full max-w-md bg-white/80 backdrop-blur-md rounded-2xl shadow-lg p-6 sm:p-8 border border-gray-200">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6 text-center">
           Create an Account
         </h2>
 
@@ -131,9 +125,7 @@ export const Signup = () => {
               } focus:ring-2 focus:ring-green-500 focus:outline-none`}
             />
             {fieldErrors.name && (
-              <p className="text-red-600 text-xs mt-1 text-left">
-                {fieldErrors.name}
-              </p>
+              <p className="text-red-600 text-xs mt-1">{fieldErrors.name}</p>
             )}
           </div>
 
@@ -154,9 +146,7 @@ export const Signup = () => {
               } focus:ring-2 focus:ring-green-500 focus:outline-none`}
             />
             {fieldErrors.email && (
-              <p className="text-red-600 text-xs mt-1 text-left">
-                {fieldErrors.email}
-              </p>
+              <p className="text-red-600 text-xs mt-1">{fieldErrors.email}</p>
             )}
           </div>
 
@@ -178,7 +168,7 @@ export const Signup = () => {
               } focus:ring-2 focus:ring-green-500 focus:outline-none`}
             />
             {fieldErrors.password && (
-              <p className="text-red-600 text-xs mt-1 text-left">
+              <p className="text-red-600 text-xs mt-1">
                 {fieldErrors.password}
               </p>
             )}
@@ -203,7 +193,7 @@ export const Signup = () => {
               } focus:ring-2 focus:ring-green-500 focus:outline-none`}
             />
             {fieldErrors.confirmPassword && (
-              <p className="text-red-600 text-xs mt-1 text-left">
+              <p className="text-red-600 text-xs mt-1">
                 {fieldErrors.confirmPassword}
               </p>
             )}
@@ -223,9 +213,9 @@ export const Signup = () => {
         </form>
 
         <div className="my-6 flex items-center">
-          <div className="flex-grow border-t border-gray-300"></div>
+          <div className="flex-grow border-t border-gray-300" />
           <span className="px-3 text-gray-500 text-sm">or</span>
-          <div className="flex-grow border-t border-gray-300"></div>
+          <div className="flex-grow border-t border-gray-300" />
         </div>
 
         <p className="text-center text-sm text-gray-600">

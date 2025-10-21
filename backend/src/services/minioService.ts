@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import path from "path";
 import { Readable } from "stream";
 
-const minioClient = new Minio.Client({
+export const minioClient = new Minio.Client({
   endPoint: process.env.MINIO_ENDPOINT || "localhost",
   port: parseInt(process.env.MINIO_PORT || "9000"),
   useSSL: process.env.MINIO_USE_SSL === "true",
@@ -31,7 +31,7 @@ interface BucketConfig {
 }
 
 class MinioService {
-  private client: Minio.Client;
+  public client: Minio.Client;
   public buckets: BucketConfig;
 
   constructor() {

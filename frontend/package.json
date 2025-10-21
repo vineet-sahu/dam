@@ -17,6 +17,7 @@
     "axios": "^1.12.2",
     "dotenv": "^17.2.3",
     "js-cookie": "^3.0.5",
+    "lucide-react": "^0.546.0",
     "react": "^19.1.1",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.9.4",
