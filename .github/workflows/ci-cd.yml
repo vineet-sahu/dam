@@ -10,7 +10,7 @@ env:
   NODE_VERSION: '20.x'
 
 jobs:
-  # Backend Checks
+  # Backend Checks 
   backend-checks:
     name: Backend - TypeScript & Lint
     runs-on: ubuntu-latest
@@ -28,7 +28,7 @@ jobs:
         node-version: ${{ env.NODE_VERSION }}
 
     - name: Install dependencies
-      run: npm ci
+      run: npm install
 
     - name: Run Prettier check
       run: npm run format -- --check
@@ -46,7 +46,7 @@ jobs:
       run: npm audit --audit-level=moderate
       continue-on-error: true
 
-  # Frontend Checks
+  # Frontend Checks 
   frontend-checks:
     name: Frontend - TypeScript & Lint
     runs-on: ubuntu-latest
@@ -174,7 +174,7 @@ jobs:
 
     - name: Deploy to production
       run: |
-        echo "Build successful! Ready for deployment."
+        echo "✅ Build successful! Ready for deployment."
         echo "Add your deployment commands here when ready"
         # Examples:
         # - scp -r backend/dist user@server:/var/www/backend
@@ -185,4 +185,4 @@ jobs:
     - name: Notify deployment
       if: success()
       run: |
-        echo "Deployment successful!"
+        echo "🚀 Deployment successful!"
