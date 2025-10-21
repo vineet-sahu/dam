@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuthContext } from "../../context/AuthContext";
+import { Database, Menu, X } from "lucide-react";
 
 type RouteItem = {
   path: string;
@@ -10,8 +11,8 @@ type RouteItem = {
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   isActive
-    ? "text-blue-600 font-semibold border-b-2 border-blue-600 pb-1"
-    : "text-gray-700 hover:text-blue-600";
+    ? "text-purple-400 font-semibold border-b-2 border-purple-400 pb-1"
+    : "text-gray-300 hover:text-purple-400 transition-colors";
 
 const Navbar: React.FC = React.memo(function Navbar() {
   const { isLoggedIn, isAdmin } = useAuthContext();
@@ -72,96 +73,100 @@ const Navbar: React.FC = React.memo(function Navbar() {
   }, [isLoggedIn]);
 
   return (
-    <nav className="bg-white shadow-md px-6 py-3 flex justify-between items-center relative">
-      <div className="text-xl font-bold text-gray-800">DAM Platform</div>
-
-      <div className="hidden md:flex space-x-6 font-medium">
-        {[...baseRoutes, ...adminRoutes].map(({ path, label, end }) => (
-          <NavLink key={path} to={path} end={end} className={linkClass}>
-            {label}
+    <nav className="fixed top-0 w-full bg-slate-900/80 backdrop-blur-lg border-b border-purple-500/20 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+          <NavLink to="/" className="flex items-center space-x-2 group">
+            <Database className="w-8 h-8 text-purple-400 group-hover:text-purple-300 transition-colors" />
+            <span className="text-xl font-bold text-white group-hover:text-purple-300 transition-colors">
+              DAM Platform
+            </span>
           </NavLink>
-        ))}
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex space-x-6 font-medium">
+            {[...baseRoutes, ...adminRoutes].map(({ path, label, end }) => (
+              <NavLink key={path} to={path} end={end} className={linkClass}>
+                {label}
+              </NavLink>
+            ))}
+          </div>
+
+          {/* Desktop Auth Links */}
+          <div className="hidden md:flex space-x-4 items-center">
+            {authLinks.map(({ path, label }, index) => (
+              <NavLink
+                key={path}
+                to={path}
+                className={
+                  index === authLinks.length - 1 && !isLoggedIn
+                    ? "px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium"
+                    : "text-gray-300 hover:text-white transition-colors font-medium"
+                }
+              >
+                {label}
+              </NavLink>
+            ))}
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            className="md:hidden text-white hover:text-purple-400 transition-colors"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle mobile menu"
+          >
+            {isMobileMenuOpen ? (
+              <X className="w-6 h-6" />
+            ) : (
+              <Menu className="w-6 h-6" />
+            )}
+          </button>
+        </div>
       </div>
 
-      <div className="hidden md:flex space-x-6 font-medium">
-        {authLinks.map(({ path, label }) => (
-          <NavLink key={path} to={path} className={linkClass}>
-            {label}
-          </NavLink>
-        ))}
-      </div>
-
-      <button
-        className="md:hidden text-gray-800"
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M4 6h16M4 12h16M4 18h16"
-          />
-        </svg>
-      </button>
-
+      {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div
           ref={mobileMenuRef}
-          className="md:hidden absolute top-0 right-0 w-2/3 bg-white shadow-md p-6 mt-3 rounded-lg z-10"
+          className="md:hidden bg-slate-900 border-t border-purple-500/20 shadow-lg"
         >
-          <button
-            className="absolute top-4 right-4 text-xl text-gray-800"
-            onClick={() => setIsMobileMenuOpen(false)}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-
-          <ul className="flex flex-col space-y-4">
+          <div className="px-4 py-4 space-y-3">
+            {/* Mobile Navigation Links */}
             {[...baseRoutes, ...adminRoutes].map(({ path, label, end }) => (
-              <li key={path}>
-                <NavLink
-                  to={path}
-                  end={end}
-                  className={linkClass}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {label}
-                </NavLink>
-              </li>
+              <NavLink
+                key={path}
+                to={path}
+                end={end}
+                className={({ isActive }) =>
+                  isActive
+                    ? "block text-purple-400 font-semibold py-2 border-l-4 border-purple-400 pl-3"
+                    : "block text-gray-300 hover:text-purple-400 py-2 border-l-4 border-transparent hover:border-purple-400/50 pl-3 transition-all"
+                }
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                {label}
+              </NavLink>
             ))}
 
-            {authLinks.map(({ path, label }) => (
-              <li key={path}>
+            {/* Mobile Auth Links */}
+            <div className="pt-4 border-t border-purple-500/20 space-y-3">
+              {authLinks.map(({ path, label }, index) => (
                 <NavLink
+                  key={path}
                   to={path}
-                  className={linkClass}
+                  className={
+                    index === authLinks.length - 1 && !isLoggedIn
+                      ? "block w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium text-center"
+                      : "block text-gray-300 hover:text-purple-400 py-2 border-l-4 border-transparent hover:border-purple-400/50 pl-3 transition-all"
+                  }
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {label}
                 </NavLink>
-              </li>
-            ))}
-          </ul>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </nav>

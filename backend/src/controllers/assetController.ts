@@ -3,6 +3,7 @@ import { Op } from "sequelize";
 import Asset from "../models/Asset";
 import minioService from "../services/minioService";
 import logger from "../utils/logger";
+import queueService from "../services/queueService";
 
 export const createAsset = async (
   req: Request,
@@ -32,12 +33,8 @@ export const createAsset = async (
     } else if (minioFile.mimetype.startsWith("audio/")) {
       assetType = "audio";
     }
-
-    const presignedUrl = await minioService.getPresignedUrl(
-      minioFile.bucketName,
-      minioFile.objectName,
-      3600,
-    );
+    const storagePath = `${minioFile.bucketName}/${minioFile.objectName}`;
+    const directUrl = `${process.env.MINIO_PUBLIC_URL}/${storagePath}`;
 
     const newAssetData = {
       name: name || minioFile.originalName,
@@ -45,15 +42,18 @@ export const createAsset = async (
       filename: minioFile.objectName,
       type: assetType,
       mimeType: minioFile.mimetype,
-      url: presignedUrl,
+      url: directUrl,
       size: minioFile.size,
-      storagePath: `${minioFile.bucketName}/${minioFile.objectName}`,
+      storagePath: storagePath,
       description: description || null,
       metadata: metadata || {},
       owner_id: userId,
       visibility: visibility || "private",
       tags: tags ? (Array.isArray(tags) ? tags : JSON.parse(tags)) : [],
-      status: "completed",
+      status:
+        assetType === "image" || assetType === "video"
+          ? "processing"
+          : "completed",
     };
 
     logger.info("New asset data to be created:", newAssetData);
@@ -62,9 +62,25 @@ export const createAsset = async (
 
     logger.info("New asset created:", newAsset.id);
 
+    let job = null;
+    if (assetType === "image" || assetType === "video") {
+      job = await queueService.addAssetProcessingJob({
+        assetId: newAsset.id,
+        bucketName: minioFile.bucketName,
+        objectName: minioFile.objectName,
+        mimeType: minioFile.mimetype,
+        type: assetType as "image" | "video",
+      });
+
+      logger.info(
+        `Processing job created: ${job?.id} for asset: ${newAsset.id}`,
+      );
+    }
+
     return res.status(201).json({
       message: "Asset created successfully",
       asset: newAsset,
+      processingJobId: job?.id || null,
     });
   } catch (error) {
     logger.error("Error creating asset:", error);
@@ -111,9 +127,31 @@ export const getAllAssets = async (
       order: [["created_at", "DESC"]],
     });
 
+    const decoratedAssets = await Promise.all(
+      rows.map(async (asset) => {
+        let signedUrl = asset.url;
+
+        if (asset.visibility === "private") {
+          const [bucketName, ...objectPathParts] = asset.storagePath.split("/");
+          const objectName = objectPathParts.join("/");
+
+          signedUrl = await minioService.getPresignedUrl(
+            bucketName,
+            objectName,
+            60 * 60,
+          );
+        }
+
+        return {
+          ...asset.toJSON(),
+          url: signedUrl,
+        };
+      }),
+    );
+
     return res.status(200).json({
       message: "Assets retrieved successfully",
-      assets: rows,
+      assets: decoratedAssets,
       pagination: {
         total: count,
         page: Number(page),
@@ -360,9 +398,39 @@ export const getAssetsByUser = async (
       order: [["created_at", "DESC"]],
     });
 
+    const decoratedAssets = await Promise.all(
+      rows.map(async (asset) => {
+        let url = asset.url || "";
+
+        if (asset.visibility === "private") {
+          try {
+            const [bucketName, ...objectPathParts] =
+              asset.storagePath.split("/");
+            const objectName = objectPathParts.join("/");
+
+            url = await minioService.getPresignedUrl(
+              bucketName,
+              objectName,
+              60 * 60,
+            );
+          } catch (err) {
+            console.error(
+              `Failed to generate signed URL for asset ${asset.id}:`,
+              err,
+            );
+          }
+        }
+
+        return {
+          ...asset.toJSON(),
+          url,
+        };
+      }),
+    );
+
     return res.status(200).json({
       message: "User assets retrieved successfully",
-      assets: rows,
+      assets: decoratedAssets,
       pagination: {
         total: count,
         page: Number(page),

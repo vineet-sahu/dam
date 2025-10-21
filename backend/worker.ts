@@ -1,14 +1,15 @@
+import "dotenv/config";
 import { Worker, Job } from "bullmq";
 import Redis from "ioredis";
-import minioService from "./services/minioService";
-import logger from "./utils/logger";
+import minioService from "./src/services/minioService";
+import logger from "./src/utils/logger";
 import sharp from "sharp";
 import ffmpeg from "fluent-ffmpeg";
 import * as fs from "fs";
 import * as path from "path";
 import { Readable } from "stream";
-import Asset from "./models/Asset";
-import sequelize from "./config/database";
+import Asset from "./src/models/Asset";
+import sequelize from "./src/config/database.ts";
 
 const connection = new Redis({
   host: process.env.REDIS_HOST || "localhost",
@@ -265,14 +266,14 @@ workers.forEach((worker) => {
 async function initializeWorker() {
   try {
     await sequelize.authenticate();
-    logger.info("✅ Database connection established");
-    logger.info(`🚀 Workers started with concurrency: ${workerConcurrency}`);
-    logger.info(`📊 Image worker: ${workerConcurrency} concurrent jobs`);
+    logger.info("Database connection established");
+    logger.info(`Workers started with concurrency: ${workerConcurrency}`);
+    logger.info(`Image worker: ${workerConcurrency} concurrent jobs`);
     logger.info(
-      `📊 Video worker: ${Math.max(1, Math.floor(workerConcurrency / 2))} concurrent jobs`,
+      `Video worker: ${Math.max(1, Math.floor(workerConcurrency / 2))} concurrent jobs`,
     );
   } catch (error) {
-    logger.error("❌ Unable to connect to database:", error);
+    logger.error("Unable to connect to database:", error);
     process.exit(1);
   }
 }
@@ -283,7 +284,7 @@ async function shutdown() {
     await Promise.all(workers.map((w) => w.close()));
     await connection.quit();
     await sequelize.close();
-    logger.info("✅ Workers shut down successfully");
+    logger.info("Workers shut down successfully");
     process.exit(0);
   } catch (error) {
     logger.error("Error during shutdown:", error);
