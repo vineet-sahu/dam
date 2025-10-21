@@ -6,9 +6,18 @@ const authenticate = (
   res: Response,
   next: NextFunction,
 ): void => {
-  const token = req.header("Authorization")?.replace("Bearer ", "");
+  const authHeader = req.headers.authorization;
+  let token: string | undefined;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.split(" ")[1];
+  }
+
+  if (!token && req.cookies?.token) {
+    token = req.cookies.token;
+  }
+
   if (!token) {
-    res.status(401).json({ message: "Authentication required" });
+    res.status(401).json({ message: "No token provided" });
     return;
   }
 

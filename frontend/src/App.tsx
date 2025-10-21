@@ -5,6 +5,7 @@ import { AppRoutes } from "./routes";
 import { ToastContainer } from "react-toastify";
 import { AuthProvider } from "./context/AuthContext";
 import Navbar from "./components/common/Navbar";
+import { AssetProvider } from "./context/Assetcontext";
 
 function App() {
   return (
@@ -25,10 +26,12 @@ function App() {
 
       <Suspense fallback={<GlobalLoader />}>
         <AuthProvider>
-          <Navbar />
-          <div id="main">
-            <AppRoutes />
-          </div>
+          <AssetProvider>
+            <Navbar />
+            <div id="main">
+              <AppRoutes />
+            </div>
+          </AssetProvider>
         </AuthProvider>
       </Suspense>
     </div>

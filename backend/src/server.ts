@@ -8,14 +8,10 @@ import errorHandler from "./middleware/errorHandler";
 import logger from "./utils/logger";
 import { connectDatabase } from "./config/database";
 import corsMiddleware from "./middleware/cors";
+import { initializeMinIOBuckets } from "./utils/initMinio";
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
-
-connectDatabase().catch((error) => {
-  logger.error("Failed to connect to database:", error);
-  process.exit(1);
-});
 
 app.use(helmet());
 app.use(corsMiddleware);
@@ -46,26 +42,37 @@ app.use((req: Request, res: Response) => {
 
 app.use(errorHandler);
 
-const server = app.listen(PORT, () => {
-  logger.info(`DAM API Server running on port ${PORT}`);
-  logger.info(`Environment: ${process.env.NODE_ENV}`);
-  logger.info(`Health check: http://localhost:${PORT}/health`);
-});
+const setupGracefulShutdown = (server: any) => {
+  const shutdown = (signal: string) => {
+    logger.info(`${signal} signal received: closing HTTP server`);
+    server.close(() => {
+      logger.info("HTTP server closed");
+      process.exit(0);
+    });
+  };
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+};
 
-process.on("SIGTERM", () => {
-  logger.info("SIGTERM signal received: closing HTTP server");
-  server.close(() => {
-    logger.info("HTTP server closed");
-    process.exit(0);
-  });
-});
+const startServer = async () => {
+  try {
+    await connectDatabase();
+    logger.info(" Database connected successfully");
+    await initializeMinIOBuckets();
 
-process.on("SIGINT", () => {
-  logger.info("SIGINT signal received: closing HTTP server");
-  server.close(() => {
-    logger.info("HTTP server closed");
-    process.exit(0);
-  });
-});
+    const server = app.listen(PORT, () => {
+      logger.info(`DAM API Server running on port ${PORT}`);
+      logger.info(`Environment: ${process.env.NODE_ENV}`);
+      logger.info(`Health check: http://localhost:${PORT}/health`);
+    });
+
+    setupGracefulShutdown(server);
+  } catch (error) {
+    logger.error("Server startup failed:", error);
+    process.exit(1);
+  }
+};
+
+startServer();
 
 export default app;

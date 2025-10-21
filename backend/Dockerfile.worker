@@ -1,13 +1,15 @@
-# backend/Dockerfile
+# backend/Dockerfile.worker
 FROM node:20-alpine
 
-# Install FFmpeg and other dependencies
+# Install FFmpeg, Sharp dependencies, and other tools
 RUN apk add --no-cache \
     ffmpeg \
     imagemagick \
     python3 \
     make \
-    g++
+    g++ \
+    vips-dev \
+    fftw-dev
 
 WORKDIR /app
 
@@ -24,12 +26,9 @@ COPY . .
 # Build TypeScript
 RUN npm run build
 
-# Expose port
-EXPOSE 3000
-
-# Health check
+# Health check for worker
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD pgrep -f "node.*worker" > /dev/null || exit 1
 
-# Start application
-CMD ["npm", "start"]
+# Start worker
+CMD ["npm", "run", "worker"]

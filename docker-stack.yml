@@ -1,0 +1,177 @@
+# docker-stack.yml (For Docker Swarm production deployment)
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: damuser
+      POSTGRES_PASSWORD: dampassword
+      POSTGRES_DB: dam_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dam-network
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - dam-network
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+
+  minio:
+    image: minio/minio:latest
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - dam-network
+    command: server /data --console-address ":9001"
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+
+  api:
+    image: your-registry/dam-api:latest
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: dam_db
+      DB_USER: damuser
+      DB_PASSWORD: dampassword
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+      MINIO_BUCKET_ORIGINALS: originals
+      MINIO_BUCKET_THUMBNAILS: thumbnails
+      MINIO_BUCKET_TRANSCODED: transcoded
+      JWT_SECRET: your-production-secret-key-change-this
+      JWT_EXPIRES_IN: 7d
+      MAX_FILE_SIZE: 524288000
+    ports:
+      - "3000:3000"
+    networks:
+      - dam-network
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  worker:
+    image: your-registry/dam-worker:latest
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: dam_db
+      DB_USER: damuser
+      DB_PASSWORD: dampassword
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+      MINIO_BUCKET_ORIGINALS: originals
+      MINIO_BUCKET_THUMBNAILS: thumbnails
+      MINIO_BUCKET_TRANSCODED: transcoded
+      WORKER_CONCURRENCY: 5
+    networks:
+      - dam-network
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  bull-board:
+    image: your-registry/dam-dashboard:latest
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    networks:
+      - dam-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  frontend:
+    image: your-registry/dam-frontend:latest
+    ports:
+      - "80:80"
+    networks:
+      - dam-network
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+
+networks:
+  dam-network:
+    driver: overlay
+    attachable: true
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
