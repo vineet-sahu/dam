@@ -44,6 +44,7 @@ router.get("/:id", getAssetById);
 
 router.put("/:id", authorize("admin", "editor"), updateAsset);
 
-router.delete("/:id", authorize("admin"), deleteAsset);
+// router.delete("/:id", authorize("admin"), deleteAsset);
+router.delete("/:id", deleteAsset);
 
 export default router;

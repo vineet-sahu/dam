@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAssets, useDeleteAsset } from "../hooks/useAsset";
 import { useAssetContext } from "../context/Assetcontext";
 import { NavLink } from "react-router-dom";
+import { useAuthContext } from "../context/AuthContext";
 
 const GalleryPage: React.FC = () => {
   const {
@@ -28,6 +29,8 @@ const GalleryPage: React.FC = () => {
 
   const { mutate, isPending: deleteAssetIsPending } = useDeleteAsset();
   const [localSearch, setLocalSearch] = useState(search);
+
+  const { user } = useAuthContext();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -116,49 +119,57 @@ const GalleryPage: React.FC = () => {
         {!isLoading && !isError && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {assets.map((asset) => (
-                <div
-                  key={asset.id}
-                  className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition group relative"
-                >
-                  {asset.type === "image" && asset.url ? (
-                    <img
-                      src={asset.url}
-                      alt={asset.name}
-                      className="w-full h-40 object-cover"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center h-40 bg-gray-100 text-gray-500 font-medium">
-                      {asset.type === "video" && "🎥 Video"}
-                      {asset.type === "audio" && "🎵 Audio"}
-                      {asset.type === "document" && "📄 Document"}
+              {assets.map((asset) => {
+                const isOwner = user?.id === asset.owner_id;
+
+                return (
+                  <div
+                    key={asset.id}
+                    className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition group relative"
+                  >
+                    {asset.type === "image" && asset.url ? (
+                      <img
+                        src={asset.url}
+                        alt={asset.name}
+                        className="w-full h-40 object-cover"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-40 bg-gray-100 text-gray-500 font-medium">
+                        {asset.type === "video" && "🎥 Video"}
+                        {asset.type === "audio" && "🎵 Audio"}
+                        {asset.type === "document" && "📄 Document"}
+                      </div>
+                    )}
+
+                    <div className="p-2">
+                      <p className="text-sm font-medium truncate">
+                        {asset.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {(Number(asset.size) / 1024 / 1024).toFixed(2)} MB
+                      </p>
                     </div>
-                  )}
 
-                  <div className="p-2">
-                    <p className="text-sm font-medium truncate">{asset.name}</p>
-                    <p className="text-xs text-gray-500">
-                      {(Number(asset.size) / 1024 / 1024).toFixed(2)} MB
-                    </p>
+                    <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center space-x-2">
+                      <button
+                        onClick={() => window.open(asset.url, "_blank")}
+                        className="px-3 py-1 bg-white text-gray-800 rounded hover:bg-gray-100"
+                      >
+                        View
+                      </button>
+                      {isOwner && (
+                        <button
+                          onClick={() => handleDelete(`${asset.id}`)}
+                          className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                          disabled={deleteAssetIsPending}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </div>
-
-                  <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center space-x-2">
-                    <button
-                      onClick={() => window.open(asset.url, "_blank")}
-                      className="px-3 py-1 bg-white text-gray-800 rounded hover:bg-gray-100"
-                    >
-                      View
-                    </button>
-                    <button
-                      onClick={() => handleDelete(`${asset.id}`)}
-                      className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                      disabled={deleteAssetIsPending}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {assets.length === 0 && (
