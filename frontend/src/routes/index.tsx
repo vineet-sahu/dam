@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { Home } from "../pages/Home";
+import Home from "../pages/Home";
 import { Dashboard } from "../pages/Dashboard";
 import SignInPage from "../pages/SignIn";
 import { Signup as SignupPage } from "../pages/Signup";
@@ -16,8 +16,22 @@ export const AppRoutes = () => {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/home" element={<Home />} />
-      <Route path="/upload" element={<UploadPage />} />
-      <Route path="/gallery" element={<GalleryPage />} />
+      <Route
+        path="/upload"
+        element={
+          <ProtectedRoute>
+            <UploadPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/gallery"
+        element={
+          <ProtectedRoute>
+            <GalleryPage />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/signIn"
         element={isLoggedIn ? <Navigate to="/" replace /> : <SignInPage />}

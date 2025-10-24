@@ -34,7 +34,7 @@ createBullBoard({
 app.use("/", serverAdapter.getRouter());
 
 // Health check endpoint
-app.get("/health", (req, res) => {
+app.get("/health", (_, res) => {
   res.json({
     status: "ok",
     service: "bull-board",
@@ -43,7 +43,7 @@ app.get("/health", (req, res) => {
 });
 
 // Queue stats endpoint
-app.get("/api/stats", async (req, res) => {
+app.get("/api/stats", async (_, res) => {
   try {
     const [imageJobCounts, videoJobCounts] = await Promise.all([
       imageQueue.getJobCounts(),
@@ -145,9 +145,9 @@ app.post("/api/queue/:queueName/clean", async (req, res) => {
 app.use(
   (
     err: any,
-    req: express.Request,
+    _: express.Request,
     res: express.Response,
-    _: express.NextFunction,
+    __: express.NextFunction,
   ) => {
     logger.error("Dashboard error:", err);
     res.status(500).json({

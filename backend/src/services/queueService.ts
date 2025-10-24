@@ -43,9 +43,6 @@ interface AssetJobData {
 }
 
 class QueueService {
-  /**
-   * Add image processing job to queue
-   */
   async addImageProcessingJob(data: AssetJobData) {
     try {
       const job = await imageQueue.add("process-image", data, {
@@ -62,9 +59,6 @@ class QueueService {
     }
   }
 
-  /**
-   * Add video processing job to queue
-   */
   async addVideoProcessingJob(data: AssetJobData) {
     try {
       const job = await videoQueue.add("process-video", data, {
@@ -81,9 +75,6 @@ class QueueService {
     }
   }
 
-  /**
-   * Add asset processing job based on type
-   */
   async addAssetProcessingJob(data: AssetJobData) {
     if (data.type === "image") {
       return this.addImageProcessingJob(data);
@@ -95,9 +86,6 @@ class QueueService {
     }
   }
 
-  /**
-   * Get job status
-   */
   async getJobStatus(jobId: string, type: "image" | "video") {
     try {
       const queue = type === "image" ? imageQueue : videoQueue;
@@ -124,9 +112,6 @@ class QueueService {
     }
   }
 
-  /**
-   * Get queue stats
-   */
   async getQueueStats() {
     try {
       const [imageStats, videoStats] = await Promise.all([
@@ -144,27 +129,18 @@ class QueueService {
     }
   }
 
-  /**
-   * Pause queue
-   */
   async pauseQueue(type: "image" | "video") {
     const queue = type === "image" ? imageQueue : videoQueue;
     await queue.pause();
     logger.info(`${type} queue paused`);
   }
 
-  /**
-   * Resume queue
-   */
   async resumeQueue(type: "image" | "video") {
     const queue = type === "image" ? imageQueue : videoQueue;
     await queue.resume();
     logger.info(`${type} queue resumed`);
   }
 
-  /**
-   * Clean old jobs
-   */
   async cleanQueue(type: "image" | "video", grace: number = 3600000) {
     const queue = type === "image" ? imageQueue : videoQueue;
 
@@ -174,9 +150,6 @@ class QueueService {
     logger.info(`${type} queue cleaned`);
   }
 
-  /**
-   * Retry failed job
-   */
   async retryFailedJob(jobId: string, type: "image" | "video") {
     try {
       const queue = type === "image" ? imageQueue : videoQueue;
@@ -196,9 +169,6 @@ class QueueService {
     }
   }
 
-  /**
-   * Health check
-   */
   async healthCheck() {
     try {
       await connection.ping();
