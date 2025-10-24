@@ -3,17 +3,25 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User";
 import { IUser } from "../types/User";
+import { signinSchema } from "../validation/authValidation";
+import { ZodIssue } from "zod";
 
 export const signin = async (
   req: Request,
   res: Response,
 ): Promise<Response> => {
   try {
-    const {
-      email,
-      password,
-      rememberMe,
-    }: { email: string; password: string; rememberMe: boolean } = req.body;
+    const parseResult = signinSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+      const errors = parseResult.error.issues.map((issue: ZodIssue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
+      }));
+      return res.status(400).json({ message: "Validation failed", errors });
+    }
+
+    const { email, password, rememberMe } = parseResult.data;
 
     const user: IUser | null = (await User.findOne({
       where: { email },

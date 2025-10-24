@@ -41,7 +41,6 @@ const Navbar: React.FC = React.memo(function Navbar() {
       { path: "/", label: "Home", end: true },
       { path: "/upload", label: "Upload" },
       { path: "/gallery", label: "Assets" },
-      { path: "/analytics", label: "Analytics" },
     ],
     [],
   );
@@ -54,6 +53,7 @@ const Navbar: React.FC = React.memo(function Navbar() {
             { path: "/admin/workers", label: "Workers" },
             { path: "/admin/storage", label: "Storage" },
             { path: "/admin/users", label: "Users" },
+            { path: "/analytics", label: "Analytics" },
           ]
         : [],
     [isAdmin],
