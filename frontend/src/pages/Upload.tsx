@@ -1,13 +1,17 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { UploadDropzone } from "../components/upload/UploadDropZone";
 import { UploadItem } from "../components/upload/UploadItem";
 import { UploadItemData } from "../types/Asset";
 import { useUploadAsset } from "../hooks/useAsset";
+import { Link } from "react-router-dom";
+import { toast } from "react-toastify";
 
 export default function UploadPage() {
   const [uploads, setUploads] = useState<UploadItemData[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const uploadMutation = useUploadAsset();
+  const navigate = useNavigate();
 
   const handleFilesSelected = (files: File[]) => {
     const newUploads: UploadItemData[] = files.map((file) => ({
@@ -91,6 +95,14 @@ export default function UploadPage() {
           console.error("Upload failed for", upload.file.name, err);
         }
       }
+
+      toast.success(
+        "All files uploaded successfully!, Redirecting to gallery...",
+        { autoClose: 1700 },
+      );
+      setTimeout(() => {
+        navigate("/gallery");
+      }, 2000);
     } finally {
       setIsUploading(false);
     }
@@ -163,6 +175,19 @@ export default function UploadPage() {
                       </span>
                     </div>
                   )}
+
+                  {completedCount > 0 && (
+                    <div className="text-right">
+                      <Link
+                        className="text-blue-600 hover:text-blue-800 font-bold"
+                        key={"/gallery"}
+                        to={"/gallery"}
+                      >
+                        Go to Assets →
+                      </Link>
+                    </div>
+                  )}
+
                   {errorCount > 0 && (
                     <div>
                       <span className="font-medium text-gray-700">Failed:</span>

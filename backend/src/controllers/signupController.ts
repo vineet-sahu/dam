@@ -5,6 +5,8 @@ import Role from "../models/Role";
 import User from "../models/User";
 import { IUser } from "../types/User";
 import { IRole } from "../types/Role";
+import { signupSchema } from "../validation/userValidation";
+import { ZodIssue } from "zod";
 
 config();
 
@@ -13,11 +15,21 @@ export const signup = async (
   res: Response,
 ): Promise<Response> => {
   try {
+    const parseResult = signupSchema.safeParse(req.body);
+
+    if (!parseResult.success) {
+      const errors = parseResult.error.issues.map((issue: ZodIssue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
+      }));
+      return res.status(400).json({ message: "Validation failed", errors });
+    }
+
     const {
       email,
       password,
       name,
-    }: { email: string; password: string; name: string } = req.body;
+    }: { email: string; password: string; name: string } = parseResult.data;
 
     const existingUser: IUser | null = (await User.findOne({
       where: { email },

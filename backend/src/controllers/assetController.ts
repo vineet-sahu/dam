@@ -4,6 +4,8 @@ import Asset from "../models/Asset";
 import minioService from "../services/minioService";
 import logger from "../utils/logger";
 import queueService from "../services/queueService";
+import { createAssetSchema } from "../validation/assetValidation";
+import { ZodIssue } from "zod";
 
 export const createAsset = async (
   req: Request,
@@ -20,7 +22,16 @@ export const createAsset = async (
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    const { name, description, metadata, visibility, tags } = req.body;
+    const parseResult = createAssetSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      const errors = parseResult.error.issues.map((issue: ZodIssue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
+      }));
+      return res.status(400).json({ message: "Validation failed", errors });
+    }
+
+    const { name, description, metadata, visibility, tags } = parseResult.data;
 
     logger.info("MinIO file uploaded:", minioFile);
     logger.info("Additional form data:", req.body);
@@ -378,24 +389,71 @@ export const getAssetsByUser = async (
 
     const {
       page = 1,
-      limit = 20,
+      limit = 10,
       type,
+      search,
+      includePublic = "false",
+      sortBy = "createdAt:desc",
     } = req.query as {
       page?: string;
       limit?: string;
       type?: string;
+      search?: string;
+      includePublic?: string;
+      sortBy?: string;
     };
 
     const offset = (Number(page) - 1) * Number(limit);
-    const where: any = { owner_id: userId };
+    const filters: any[] = [];
 
-    if (type) where.type = type;
+    filters.push({ owner_id: userId });
+
+    if (includePublic === "true") {
+      filters.push({ visibility: "public" });
+    }
+
+    const searchConditions: any[] = [];
+    if (search) {
+      searchConditions.push(
+        { name: { [Op.iLike]: `%${search}%` } },
+        { description: { [Op.iLike]: `%${search}%` } },
+        { tags: { [Op.contains]: [search] } },
+        { metadata: { [Op.contains]: { search } } },
+      );
+    }
+
+    const where: any = {};
+    if (filters.length > 0 && searchConditions.length > 0) {
+      where[Op.and] = [{ [Op.or]: filters }, { [Op.or]: searchConditions }];
+    } else if (filters.length > 0) {
+      where[Op.or] = filters;
+    } else if (searchConditions.length > 0) {
+      where[Op.or] = searchConditions;
+    }
+
+    if (type) {
+      where.type = type;
+    }
+
+    const [sortField, sortOrder] = (sortBy as string).split(":");
+    const validFields = ["createdAt", "name", "size"];
+    const validOrders = ["asc", "desc"];
+    const order: any = [];
+
+    if (validFields.includes(sortField) && validOrders.includes(sortOrder)) {
+      order.push([
+        sortField === "createdAt" ? "created_at" : sortField,
+        sortOrder.toUpperCase(),
+      ]);
+    } else {
+      order.push(["created_at", "DESC"]);
+    }
 
     const { count, rows } = await Asset.findAndCountAll({
       where,
       limit: Number(limit),
       offset,
-      order: [["created_at", "DESC"]],
+      order,
     });
 
     const decoratedAssets = await Promise.all(
