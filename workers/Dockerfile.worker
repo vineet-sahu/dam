@@ -1,4 +1,4 @@
-# backend/Dockerfile.worker
+# workers/Dockerfile.worker
 FROM node:20-alpine
 
 # Install FFmpeg, Sharp dependencies, and other tools

@@ -171,10 +171,6 @@ export default class Asset extends Model {
   @Column({ field: "updated_at", type: DataType.DATE })
   updatedAt!: Date;
 
-  /**
-   * Get a fresh presigned URL for this asset
-   * @param expirySeconds - URL expiry time in seconds (default: 1 hour)
-   */
   async getPresignedUrl(expirySeconds: number = 3600): Promise<string> {
     const [bucketName, objectName] = this.storagePath.split("/");
     return await minioService.getPresignedUrl(
@@ -184,10 +180,6 @@ export default class Asset extends Model {
     );
   }
 
-  /**
-   * Get presigned URL for thumbnail
-   * @param expirySeconds - URL expiry time in seconds (default: 1 hour)
-   */
   async getThumbnailUrl(expirySeconds: number = 3600): Promise<string | null> {
     if (!this.thumbnailPath) return null;
     const [bucketName, objectName] = this.thumbnailPath.split("/");

@@ -45,3 +45,11 @@ minio-data/
 
 # Redis dump
 dump.rdb
+
+node_modules
+*.log
+*.ts
+.git
+.idea
+.vscode
+dist/

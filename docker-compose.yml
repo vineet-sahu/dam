@@ -7,9 +7,9 @@ services:
     image: postgres:15-alpine
     container_name: dam-postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-damuser}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dampassword}
-      POSTGRES_DB: ${POSTGRES_DB:-dam_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-dam}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -17,7 +17,7 @@ services:
     networks:
       - dam-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U damuser"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -64,7 +64,7 @@ services:
   api:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.backend
     container_name: dam-api
     environment:
       NODE_ENV: ${NODE_ENV:-development}
@@ -73,9 +73,9 @@ services:
       # Database
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${POSTGRES_DB:-dam_db}
-      DB_USER: ${POSTGRES_USER:-damuser}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-dampassword}
+      DB_NAME: ${POSTGRES_DB:-dam}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-password}
       
       # Redis
       REDIS_HOST: redis
@@ -116,7 +116,7 @@ services:
   # Worker Service (Asset Processor)
   worker:
     build:
-      context: ./backend
+      context: ./workers
       dockerfile: Dockerfile.worker
     deploy:
       replicas: 2
@@ -133,9 +133,9 @@ services:
       # Database
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${POSTGRES_DB:-dam_db}
-      DB_USER: ${POSTGRES_USER:-damuser}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-dampassword}
+      DB_NAME: ${POSTGRES_DB:-dam}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-password}
       
       # Redis
       REDIS_HOST: redis
@@ -146,7 +146,7 @@ services:
       MINIO_PORT: 9000
       MINIO_USE_SSL: "false"
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       MINIO_BUCKET_ORIGINALS: originals
       MINIO_BUCKET_THUMBNAILS: thumbnails
       MINIO_BUCKET_TRANSCODED: transcoded
@@ -154,7 +154,7 @@ services:
       # Worker Configuration
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-5}
     volumes:
-      - ./backend:/app
+      - ./workers:/app
       - /app/node_modules
     networks:
       - dam-network
@@ -190,12 +190,12 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.frontend
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+        VITE_DAM_API_BASE_URL: ${VITE_DAM_API_BASE_URL:-http://localhost:3000/api}
     container_name: dam-frontend
     ports:
-      - "5173:5173"
+      - "5173:80"
     volumes:
       - ./frontend:/app
       - /app/node_modules

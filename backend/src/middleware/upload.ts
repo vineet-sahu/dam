@@ -96,6 +96,7 @@ export const processMinioUploadSingle = async (
 
     logger.info(`File uploaded successfully: ${result.objectName}`);
     next();
+    return;
   } catch (error) {
     logger.error("MinIO upload error:", error);
     return res.status(500).json({
@@ -143,6 +144,7 @@ export const processMinioUploadMultiple = async (
 
     logger.info(`${results.length} files uploaded successfully`);
     next();
+    return;
   } catch (error) {
     logger.error("MinIO multiple upload error:", error);
     return res.status(500).json({
@@ -179,10 +181,11 @@ export const handleUploadError = (
   }
 
   next();
+  return;
 };
 
 export const cleanupTempFiles = (
-  req: Request,
+  _: Request,
   _res: Response,
   next: NextFunction,
 ) => {

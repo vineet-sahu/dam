@@ -12,7 +12,7 @@ router.post("/signin", signin);
 
 router.get("/me", me);
 
-router.get("/admin-data", authenticate, authorize("admin"), (req, res) => {
+router.get("/admin-data", authenticate, authorize("admin"), (_, res) => {
   res.json({ message: "This is admin data" });
 });
 
@@ -20,7 +20,7 @@ router.get(
   "/editor-data",
   authenticate,
   authorize("admin", "editor"),
-  (req, res) => {
+  (_, res) => {
     res.json({ message: "This is editor or admin data" });
   },
 );
