@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "scripts": {
         "build": "tsc",
-        "dev": "tsx watch src",
+        "dev": "tsx watch src/worker.ts",
         "worker": "node dist/worker.js"
     },
     "dependencies": {
@@ -21,7 +21,7 @@
         "winston": "^3.18.3"
     },
     "devDependencies": {
-        "@types/fluent-ffmpeg": "^2.1.27",
+        "@types/fluent-ffmpeg": "^2.1.28",
         "@types/node": "^24.9.1",
         "@types/sequelize": "^4.28.20",
         "@types/sharp": "^0.31.1",

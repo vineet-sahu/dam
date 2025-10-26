@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import express from "express";
 import { Op } from "sequelize";
 import Asset from "../models/Asset";
 import minioService from "../services/minioService";
@@ -6,11 +6,12 @@ import logger from "../utils/logger";
 import queueService from "../services/queueService";
 import { createAssetSchema } from "../validation/assetValidation";
 import { ZodIssue } from "zod";
+import { Job } from "bullmq";
 
 export const createAsset = async (
-  req: Request,
-  res: Response,
-): Promise<Response> => {
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
   try {
     const userId: string | undefined = req.user?.id;
     if (!userId) {
@@ -73,7 +74,7 @@ export const createAsset = async (
 
     logger.info("New asset created:", newAsset.id);
 
-    let job = null;
+    let job: Job<any, any, string> | null = null;
     if (assetType === "image" || assetType === "video") {
       job = await queueService.addAssetProcessingJob({
         assetId: newAsset.id,
@@ -100,9 +101,9 @@ export const createAsset = async (
 };
 
 export const getAllAssets = async (
-  req: Request,
-  res: Response,
-): Promise<Response> => {
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
   try {
     const {
       page = 1,
@@ -177,9 +178,9 @@ export const getAllAssets = async (
 };
 
 export const getAssetById = async (
-  req: Request,
-  res: Response,
-): Promise<Response> => {
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
   try {
     const { id } = req.params;
 
@@ -209,9 +210,9 @@ export const getAssetById = async (
 };
 
 export const downloadAsset = async (
-  req: Request,
-  res: Response,
-): Promise<Response> => {
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
   try {
     const { id } = req.params;
     const expirySeconds = parseInt(req.query.expiry as string) || 3600;
@@ -249,8 +250,8 @@ export const downloadAsset = async (
 };
 
 export const streamAsset = async (
-  req: Request,
-  res: Response,
+  req: express.Request,
+  res: express.Response,
 ): Promise<void> => {
   try {
     const { id } = req.params;
@@ -292,9 +293,9 @@ export const streamAsset = async (
 };
 
 export const updateAsset = async (
-  req: Request,
-  res: Response,
-): Promise<Response> => {
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
   try {
     const { id } = req.params;
     const { name, description, metadata, visibility, tags } = req.body;
@@ -329,9 +330,9 @@ export const updateAsset = async (
 };
 
 export const deleteAsset = async (
-  req: Request,
-  res: Response,
-): Promise<Response> => {
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
   try {
     const { id } = req.params;
 
@@ -339,6 +340,9 @@ export const deleteAsset = async (
     if (!asset) {
       return res.status(404).json({ message: "Asset not found" });
     }
+
+    // console.log("Authenticated user ID:", req.user?.id);
+    // console.log("Asset owner ID:", asset.owner_id);
 
     if (req.user?.id !== asset.owner_id) {
       return res
@@ -378,9 +382,9 @@ export const deleteAsset = async (
 };
 
 export const getAssetsByUser = async (
-  req: Request,
-  res: Response,
-): Promise<Response> => {
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -406,8 +410,10 @@ export const getAssetsByUser = async (
     const offset = (Number(page) - 1) * Number(limit);
     const filters: any[] = [];
 
+    // Add filter for assets owned by the user
     filters.push({ owner_id: userId });
 
+    // Add condition for public assets (if express.requested)
     if (includePublic === "true") {
       filters.push({ visibility: "public" });
     }
@@ -423,8 +429,18 @@ export const getAssetsByUser = async (
     }
 
     const where: any = {};
+
+    // Combining both conditions (owner + public)
     if (filters.length > 0 && searchConditions.length > 0) {
-      where[Op.and] = [{ [Op.or]: filters }, { [Op.or]: searchConditions }];
+      where[Op.or] = [
+        { [Op.and]: filters },
+        {
+          [Op.and]: [
+            { owner_id: { [Op.ne]: userId } },
+            { visibility: "public" },
+          ],
+        },
+      ];
     } else if (filters.length > 0) {
       where[Op.or] = filters;
     } else if (searchConditions.length > 0) {
@@ -503,9 +519,9 @@ export const getAssetsByUser = async (
 };
 
 export const getAssetsByType = async (
-  req: Request,
-  res: Response,
-): Promise<Response> => {
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
   try {
     const { type } = req.params;
     const { page = 1, limit = 20 } = req.query as {

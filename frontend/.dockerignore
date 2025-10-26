@@ -1,6 +1,10 @@
 # Node modules (we'll install these in the container)
 node_modules
 
+# Build and Vite cache
+dist/
+.vite/
+
 # Logs
 *.log
 logs/
@@ -23,16 +27,6 @@ Thumbs.db
 Dockerfile*
 docker-compose.yml
 
-# Test and coverage files
-test/
-tests/
-coverage/
-
-# Build or dist directories
-dist/
-build/
-out/
-
 # Environment variables file (to avoid exposing sensitive data)
 .env
 .env.local
@@ -42,3 +36,13 @@ out/
 .vscode/
 .idea/
 *.md
+
+# Test/coverage files (if you have tests)
+test/
+tests/
+coverage/
+
+# Generated files or directories that are not needed in the container
+*.tgz
+*.tar.gz
+*.zip

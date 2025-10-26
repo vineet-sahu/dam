@@ -19,6 +19,7 @@ const BUCKETS = {
 } as const;
 
 interface UploadResult {
+  etag?: string | undefined;
   bucketName: string;
   objectName: string;
   size: number;

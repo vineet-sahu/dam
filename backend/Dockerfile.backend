@@ -1,10 +1,8 @@
-# backend/Dockerfile
-FROM node:20-alpine
+# Stage 1: Build stage
+FROM node:20-alpine AS build
 
-# Install FFmpeg and other dependencies
+# Install build dependencies (like TypeScript, etc.)
 RUN apk add --no-cache \
-    ffmpeg \
-    imagemagick \
     python3 \
     make \
     g++
@@ -14,7 +12,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install production and development dependencies
 RUN npm ci --only=production && \
     npm cache clean --force
 
@@ -22,7 +20,23 @@ RUN npm ci --only=production && \
 COPY . .
 
 # Build TypeScript
-RUN npm run build
+RUN npm install -g typescript && npm run build
+
+# Stage 2: Production stage
+FROM node:20-alpine
+
+# Install only necessary runtime dependencies (FFmpeg in this case)
+RUN apk add --no-cache ffmpeg
+
+WORKDIR /app
+
+# Copy only the built files from the previous stage
+COPY --from=build /app/dist /app/dist
+COPY --from=build /app/package*.json /app/
+
+# Install only production dependencies
+RUN npm ci --only=production && npm prune --production && \
+    npm cache clean --force
 
 # Expose port
 EXPOSE 3000

@@ -1,12 +1,12 @@
-import { Request, Response, NextFunction } from "express";
+import express from "express";
 import User from "../models/User";
 import Role from "../models/Role";
 
 const authorize = (...requiredRoles: string[]) => {
   return async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
   ): Promise<void> => {
     try {
       const userId = req.user?.id;
