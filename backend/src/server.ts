@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express, { Application, Request, Response } from "express";
+import express from "express";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -10,7 +10,7 @@ import { connectDatabase } from "./config/database";
 import corsMiddleware from "./middleware/cors";
 import { initializeMinIOBuckets } from "./utils/initMinio";
 
-const app: Application = express();
+const app: express.Application = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(helmet());
@@ -20,7 +20,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.get("/health", (_: Request, res: Response) => {
+app.get("/health", (_: express.Request, res: express.Response) => {
   res.status(200).json({
     status: "OK",
     timestamp: new Date().toISOString(),
@@ -32,7 +32,7 @@ app.get("/health", (_: Request, res: Response) => {
 
 app.use("/api", routes);
 
-app.use((req: Request, res: Response) => {
+app.use((req: express.Request, res: express.Response) => {
   res.status(404).json({
     success: false,
     message: "Route not found",

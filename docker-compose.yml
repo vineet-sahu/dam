@@ -1,4 +1,3 @@
-# docker-compose.yml (root directory)
 version: '3.8'
 
 services:
@@ -13,7 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5433:5432"  # ✅ External:5433 -> Internal:5432
     networks:
       - dam-network
     healthcheck:
@@ -30,7 +29,7 @@ services:
     volumes:
       - redis_data:/data
     ports:
-      - "6379:6379"
+      - "6380:6379"  # ✅ FIXED: External:6380 -> Internal:6379 (avoid conflict with local Redis)
     networks:
       - dam-network
     healthcheck:
@@ -68,18 +67,18 @@ services:
     container_name: dam-api
     environment:
       NODE_ENV: ${NODE_ENV:-development}
-      PORT: ${API_PORT:-3000}
+      PORT: 3000  # ✅ Internal port that app listens on
       
-      # Database
+      # Database - INTERNAL container port (not the host port!)
       DB_HOST: postgres
-      DB_PORT: 5432
+      DB_PORT: 5432  # ✅ FIXED: Must be 5432 (internal port inside docker network)
       DB_NAME: ${POSTGRES_DB:-dam}
       DB_USER: ${POSTGRES_USER:-postgres}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-password}
       
-      # Redis
+      # Redis - INTERNAL container port (not the host port!)
       REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_PORT: 6379  # ✅ Already correct: Must be 6379 (internal port inside docker network)
       
       # MinIO
       MINIO_ENDPOINT: minio
@@ -101,7 +100,7 @@ services:
       - ./backend:/app
       - /app/node_modules
     ports:
-      - "3000:3000"
+      - "3004:3000"  # ✅ FIXED: External:3004 -> Internal:3000 (matches PORT env var)
     networks:
       - dam-network
     depends_on:
@@ -130,23 +129,23 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       
-      # Database
+      # Database - INTERNAL container port (not the host port!)
       DB_HOST: postgres
-      DB_PORT: 5432
+      DB_PORT: 5432  # ✅ FIXED: Must be 5432 (internal port inside docker network)
       DB_NAME: ${POSTGRES_DB:-dam}
       DB_USER: ${POSTGRES_USER:-postgres}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-password}
       
-      # Redis
+      # Redis - INTERNAL container port (not the host port!)
       REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_PORT: 6379  # ✅ Already correct: Must be 6379 (internal port inside docker network)
       
       # MinIO
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
       MINIO_USE_SSL: "false"
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
       MINIO_BUCKET_ORIGINALS: originals
       MINIO_BUCKET_THUMBNAILS: thumbnails
       MINIO_BUCKET_TRANSCODED: transcoded
@@ -175,10 +174,10 @@ services:
     container_name: dam-bull-board
     environment:
       REDIS_HOST: redis
-      REDIS_PORT: 6379
-      PORT: 3001
+      REDIS_PORT: 6379  # ✅ Already correct
+      PORT: 3001  # ✅ Internal port that app listens on
     ports:
-      - "3001:3001"
+      - "3005:3001"  # ✅ FIXED: External:3005 -> Internal:3001 (matches PORT env var)
     networks:
       - dam-network
     depends_on:
@@ -192,10 +191,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.frontend
       args:
-        VITE_DAM_API_BASE_URL: ${VITE_DAM_API_BASE_URL:-http://localhost:3000/api}
+        VITE_DAM_API_BASE_URL: ${VITE_DAM_API_BASE_URL:-http://localhost:3004/api}
     container_name: dam-frontend
     ports:
-      - "5173:80"
+      - "5174:80"
     volumes:
       - ./frontend:/app
       - /app/node_modules

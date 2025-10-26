@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User";
@@ -7,9 +7,9 @@ import { signinSchema } from "../validation/authValidation";
 import { ZodIssue } from "zod";
 
 export const signin = async (
-  req: Request,
-  res: Response,
-): Promise<Response> => {
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
   try {
     const parseResult = signinSchema.safeParse(req.body);
 
@@ -58,7 +58,10 @@ export const signin = async (
   }
 };
 
-export const me = async (req: Request, res: Response): Promise<Response> => {
+export const me = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
   try {
     let token: string | undefined;
     const authHeader = req.headers.authorization;
@@ -78,7 +81,7 @@ export const me = async (req: Request, res: Response): Promise<Response> => {
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET || "");
     } catch (err) {
-      return res.status(401).json({ message: "Invalid token" });
+      return res.status(401).json({ message: "Invalid token", error: err });
     }
 
     const user: IUser | null = (await User.findByPk(

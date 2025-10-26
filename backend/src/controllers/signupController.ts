@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import express from "express";
 import bcrypt from "bcryptjs";
 import { config } from "dotenv";
 import Role from "../models/Role";
@@ -11,9 +11,9 @@ import { ZodIssue } from "zod";
 config();
 
 export const signup = async (
-  req: Request,
-  res: Response,
-): Promise<Response> => {
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
   try {
     const parseResult = signupSchema.safeParse(req.body);
 
@@ -69,9 +69,9 @@ export const signup = async (
 };
 
 export const createUserWithRoles = async (
-  req: Request,
-  res: Response,
-): Promise<Response> => {
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
   try {
     const {
       email,
@@ -141,9 +141,9 @@ export const createUserWithRoles = async (
 };
 
 export const updateUserRoles = async (
-  req: Request,
-  res: Response,
-): Promise<Response> => {
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
   try {
     const { userId } = req.params;
     const { roles }: { roles: string[] } = req.body;

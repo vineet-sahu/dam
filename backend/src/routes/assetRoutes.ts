@@ -1,4 +1,4 @@
-import { Router } from "express";
+import express from "express";
 import {
   createAsset,
   deleteAsset,
@@ -18,7 +18,7 @@ import {
   processMinioUploadSingle,
 } from "../middleware/upload";
 
-const router = Router();
+const router = express.Router();
 
 router.use(authenticate);
 

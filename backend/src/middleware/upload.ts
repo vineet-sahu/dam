@@ -1,8 +1,29 @@
 /* eslint-disable no-undef */
 import multer from "multer";
-import type { Request, Response, NextFunction } from "express";
+import express from "express";
 import minioService from "../services/minioService";
 import logger from "../utils/logger";
+
+interface MinioUploadedFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  bucketName: string;
+  objectName: string;
+  etag: string | undefined;
+}
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    interface Request {
+      minioFile?: MinioUploadedFile;
+      minioFiles?: MinioUploadedFile[];
+    }
+  }
+}
 
 const ALLOWED_IMAGE_TYPES = (
   process.env.ALLOWED_IMAGE_TYPES || "image/jpeg,image/png,image/gif,image/webp"
@@ -27,11 +48,11 @@ const ALLOWED_TYPES = [
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || "524288000", 10);
 
 const fileFilter = (
-  _: Request,
-  file: Express.Multer.File,
+  _: express.Request,
+  file: Express.Request["file"],
   cb: multer.FileFilterCallback,
 ) => {
-  if (ALLOWED_TYPES.includes(file.mimetype)) {
+  if (ALLOWED_TYPES.includes(`${file?.mimetype}`)) {
     cb(null, true);
   } else {
     cb(
@@ -67,9 +88,9 @@ const getBucketForFileType = (mimetype: string): string => {
 };
 
 export const processMinioUploadSingle = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
 ) => {
   try {
     if (!req.file) {
@@ -88,10 +109,15 @@ export const processMinioUploadSingle = async (
       req.file.mimetype,
     );
 
-    (req as any).minioFile = {
-      ...result,
-      originalName: req.file.originalname,
+    req.minioFile = {
+      fieldname: req.file.fieldname,
+      originalname: req.file.originalname,
+      encoding: req.file.encoding,
       mimetype: req.file.mimetype,
+      size: req.file.size,
+      bucketName: result.bucketName,
+      objectName: result.objectName,
+      etag: result.etag,
     };
 
     logger.info(`File uploaded successfully: ${result.objectName}`);
@@ -107,12 +133,13 @@ export const processMinioUploadSingle = async (
 };
 
 export const processMinioUploadMultiple = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
 ) => {
   try {
-    const files = req.files as Express.Multer.File[];
+    // FIXED: Changed from Express.Multer.File[] to proper type
+    const files = req.files as Array<Express.Request["file"]>;
 
     if (!files || files.length === 0) {
       return res.status(400).json({
@@ -122,6 +149,8 @@ export const processMinioUploadMultiple = async (
     }
 
     const uploadPromises = files.map(async (file) => {
+      if (!file) return null;
+
       const bucket = getBucketForFileType(file.mimetype);
 
       const result = await minioService.uploadFile(
@@ -132,15 +161,19 @@ export const processMinioUploadMultiple = async (
       );
 
       return {
-        ...result,
-        originalName: file.originalname,
+        fieldname: file.fieldname,
+        originalname: file.originalname,
+        encoding: file.encoding,
         mimetype: file.mimetype,
+        size: file.size,
+        bucketName: result.bucketName,
+        objectName: result.objectName,
+        etag: result.etag,
       };
     });
 
     const results = await Promise.all(uploadPromises);
-
-    (req as any).minioFiles = results;
+    req.minioFiles = results.filter((r): r is MinioUploadedFile => r !== null);
 
     logger.info(`${results.length} files uploaded successfully`);
     next();
@@ -156,9 +189,9 @@ export const processMinioUploadMultiple = async (
 
 export const handleUploadError = (
   err: any,
-  _req: Request,
-  res: Response,
-  next: NextFunction,
+  _req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
 ) => {
   if (err instanceof multer.MulterError) {
     if (err.code === "LIMIT_FILE_SIZE") {
@@ -170,7 +203,7 @@ export const handleUploadError = (
     if (err.code === "LIMIT_FILE_COUNT") {
       return res.status(400).json({
         success: false,
-        message: "Too many files. Maximum: 10 files per request",
+        message: "Too many files. Maximum: 10 files per express.request",
       });
     }
     return res.status(400).json({ success: false, message: err.message });
@@ -185,9 +218,9 @@ export const handleUploadError = (
 };
 
 export const cleanupTempFiles = (
-  _: Request,
-  _res: Response,
-  next: NextFunction,
+  _: express.Request,
+  _res: express.Response,
+  next: express.NextFunction,
 ) => {
   next();
 };
