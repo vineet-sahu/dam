@@ -50,8 +50,8 @@ export const createAsset = async (
 
     const newAssetData = {
       name: name || minioFile.originalName,
-      originalName: minioFile.originalName,
-      filename: minioFile.objectName,
+      originalName: minioFile.originalName || name,
+      filename: minioFile.objectName || name,
       type: assetType,
       mimeType: minioFile.mimetype,
       url: directUrl,
@@ -141,7 +141,10 @@ export const getAllAssets = async (
 
     const decoratedAssets = await Promise.all(
       rows.map(async (asset) => {
+        const assetJson = asset.toJSON();
         let signedUrl = asset.url;
+        let thumbnailUrl: string | null = null;
+        let transcodedUrls: Record<string, string> = {};
 
         if (asset.visibility === "private") {
           const [bucketName, ...objectPathParts] = asset.storagePath.split("/");
@@ -154,9 +157,55 @@ export const getAllAssets = async (
           );
         }
 
+        // Generate thumbnail URL
+        if (asset.thumbnailPath) {
+          try {
+            const [thumbBucket, ...thumbPathParts] =
+              asset.thumbnailPath.split("/");
+            const thumbObjectName = thumbPathParts.join("/");
+            thumbnailUrl = await minioService.getPresignedUrl(
+              thumbBucket,
+              thumbObjectName,
+              60 * 60,
+            );
+          } catch (err) {
+            console.error(
+              `Failed to generate thumbnail URL for asset ${asset.id}:`,
+              err,
+            );
+          }
+        }
+
+        // Generate transcoded URLs
+        if (
+          asset.transcodedPaths &&
+          typeof asset.transcodedPaths === "object"
+        ) {
+          for (const [quality, path] of Object.entries(asset.transcodedPaths)) {
+            try {
+              const [transcodeBucket, ...transcodePathParts] = (
+                path as string
+              ).split("/");
+              const transcodeObjectName = transcodePathParts.join("/");
+              transcodedUrls[quality] = await minioService.getPresignedUrl(
+                transcodeBucket,
+                transcodeObjectName,
+                60 * 60,
+              );
+            } catch (err) {
+              console.error(
+                `Failed to generate transcode URL for ${quality} of asset ${asset.id}:`,
+                err,
+              );
+            }
+          }
+        }
+
         return {
-          ...asset.toJSON(),
+          ...assetJson,
           url: signedUrl,
+          thumbnailUrl,
+          transcodedUrls,
         };
       }),
     );
@@ -189,18 +238,67 @@ export const getAssetById = async (
       return res.status(404).json({ message: "Asset not found" });
     }
 
-    const [bucketName, objectName] = asset.storagePath.split("/");
+    const assetJson = asset.toJSON();
+
+    // Generate signed URL for original asset
+    const [bucketName, ...objectPathParts] = asset.storagePath.split("/");
+    const objectName = objectPathParts.join("/");
     const freshUrl = await minioService.getPresignedUrl(
       bucketName,
       objectName,
-      3600,
+      10,
     );
+
+    let thumbnailUrl: string | null = null;
+    let transcodedUrls: Record<string, string> = {};
+
+    // Generate thumbnail URL
+    if (asset.thumbnailPath) {
+      try {
+        const [thumbBucket, ...thumbPathParts] = asset.thumbnailPath.split("/");
+        const thumbObjectName = thumbPathParts.join("/");
+        thumbnailUrl = await minioService.getPresignedUrl(
+          thumbBucket,
+          thumbObjectName,
+          10,
+        );
+      } catch (err) {
+        console.error(
+          `Failed to generate thumbnail URL for asset ${asset.id}:`,
+          err,
+        );
+      }
+    }
+
+    // Generate transcoded URLs
+    if (asset.transcodedPaths && typeof asset.transcodedPaths === "object") {
+      for (const [quality, path] of Object.entries(asset.transcodedPaths)) {
+        try {
+          const [transcodeBucket, ...transcodePathParts] = (
+            path as string
+          ).split("/");
+          const transcodeObjectName = transcodePathParts.join("/");
+          transcodedUrls[quality] = await minioService.getPresignedUrl(
+            transcodeBucket,
+            transcodeObjectName,
+            10,
+          );
+        } catch (err) {
+          console.error(
+            `Failed to generate transcode URL for ${quality} of asset ${asset.id}:`,
+            err,
+          );
+        }
+      }
+    }
 
     return res.status(200).json({
       message: "Asset retrieved successfully",
       asset: {
-        ...asset.toJSON(),
+        ...assetJson,
         url: freshUrl,
+        thumbnailUrl,
+        transcodedUrls,
       },
     });
   } catch (error) {
@@ -222,7 +320,8 @@ export const downloadAsset = async (
       return res.status(404).json({ message: "Asset not found" });
     }
 
-    const [bucketName, objectName] = asset.storagePath.split("/");
+    const [bucketName, ...objectPathParts] = asset.storagePath.split("/");
+    const objectName = objectPathParts.join("/");
 
     const downloadUrl = await minioService.getPresignedUrl(
       bucketName,
@@ -234,18 +333,393 @@ export const downloadAsset = async (
 
     return res.status(200).json({
       message: "Download URL generated successfully",
-      url: downloadUrl,
+      downloadUrl, // Changed from 'url' to 'downloadUrl' for consistency
+      filename: asset.originalName || asset.name, // Added filename
       expiresIn: expirySeconds,
-      asset: {
-        id: asset.id,
-        name: asset.name,
-        size: asset.size,
-        mimeType: asset.mimeType,
-      },
     });
   } catch (error) {
     logger.error("Error generating download URL:", error);
     return res.status(500).json({ message: "Failed to generate download URL" });
+  }
+};
+
+// Add these new endpoints
+export const downloadThumbnail = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
+  try {
+    const { id } = req.params;
+    const expirySeconds = 3600;
+
+    const asset = await Asset.findByPk(id);
+    if (!asset || !asset.thumbnailPath) {
+      return res.status(404).json({ message: "Thumbnail not found" });
+    }
+
+    const [bucketName, ...objectPathParts] = asset.thumbnailPath.split("/");
+    const objectName = objectPathParts.join("/");
+
+    const downloadUrl = await minioService.getPresignedUrl(
+      bucketName,
+      objectName,
+      expirySeconds,
+    );
+
+    return res.status(200).json({
+      message: "Thumbnail download URL generated successfully",
+      downloadUrl,
+      filename: `${asset.name}_thumbnail.jpg`,
+      expiresIn: expirySeconds,
+    });
+  } catch (error) {
+    logger.error("Error generating thumbnail download URL:", error);
+    return res.status(500).json({ message: "Failed to generate download URL" });
+  }
+};
+
+export const downloadTranscodedAsset = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
+  try {
+    const { id, quality } = req.params;
+    const expirySeconds = 3600;
+
+    const asset = await Asset.findByPk(id);
+    if (!asset || !asset.transcodedPaths) {
+      return res.status(404).json({ message: "Asset not found" });
+    }
+
+    const transcodedPaths = asset.transcodedPaths as Record<string, string>;
+    const path = transcodedPaths[quality];
+
+    if (!path) {
+      return res
+        .status(404)
+        .json({ message: `Transcode quality '${quality}' not found` });
+    }
+
+    const [bucketName, ...objectPathParts] = path.split("/");
+    const objectName = objectPathParts.join("/");
+
+    const downloadUrl = await minioService.getPresignedUrl(
+      bucketName,
+      objectName,
+      expirySeconds,
+    );
+
+    // Increment download count
+    await asset.update({ downloadCount: asset.downloadCount + 1 });
+
+    return res.status(200).json({
+      message: "Transcode download URL generated successfully",
+      downloadUrl,
+      filename: `${asset.name}_${quality}.mp4`,
+      expiresIn: expirySeconds,
+    });
+  } catch (error) {
+    logger.error("Error generating transcode download URL:", error);
+    return res.status(500).json({ message: "Failed to generate download URL" });
+  }
+};
+
+export const getAssetsByUser = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
+
+    const {
+      page = 1,
+      limit = 10,
+      type,
+      search,
+      includePublic = "false",
+      sortBy = "createdAt:desc",
+    } = req.query as {
+      page?: string;
+      limit?: string;
+      type?: string;
+      search?: string;
+      includePublic?: string;
+      sortBy?: string;
+    };
+
+    const offset = (Number(page) - 1) * Number(limit);
+    const filters: any[] = [];
+
+    // Add filter for assets owned by the user
+    filters.push({ owner_id: userId });
+
+    // Add condition for public assets (if requested)
+    if (includePublic === "true") {
+      filters.push({ visibility: "public" });
+    }
+
+    const searchConditions: any[] = [];
+    if (search) {
+      searchConditions.push(
+        { name: { [Op.iLike]: `%${search}%` } },
+        { description: { [Op.iLike]: `%${search}%` } },
+        { tags: { [Op.contains]: [search] } },
+        { metadata: { [Op.contains]: { search } } },
+      );
+    }
+
+    const where: any = {};
+
+    // Combining both conditions (owner + public)
+    if (filters.length > 0 && searchConditions.length > 0) {
+      where[Op.or] = [
+        { [Op.and]: filters },
+        {
+          [Op.and]: [
+            { owner_id: { [Op.ne]: userId } },
+            { visibility: "public" },
+          ],
+        },
+      ];
+    } else if (filters.length > 0) {
+      where[Op.or] = filters;
+    } else if (searchConditions.length > 0) {
+      where[Op.or] = searchConditions;
+    }
+
+    if (type) {
+      where.type = type;
+    }
+
+    const [sortField, sortOrder] = (sortBy as string).split(":");
+    const validFields = ["createdAt", "name", "size"];
+    const validOrders = ["asc", "desc"];
+    const order: any = [];
+
+    if (validFields.includes(sortField) && validOrders.includes(sortOrder)) {
+      order.push([
+        sortField === "createdAt" ? "created_at" : sortField,
+        sortOrder.toUpperCase(),
+      ]);
+    } else {
+      order.push(["created_at", "DESC"]);
+    }
+
+    const { count, rows } = await Asset.findAndCountAll({
+      where,
+      limit: Number(limit),
+      offset,
+      order,
+    });
+
+    const decoratedAssets = await Promise.all(
+      rows.map(async (asset) => {
+        const assetJson = asset.toJSON();
+        let url = asset.url || "";
+        let thumbnailUrl: string | null = null;
+        let transcodedUrls: Record<string, string> = {};
+
+        if (asset.visibility === "private" || !asset.url) {
+          try {
+            const [bucketName, ...objectPathParts] =
+              asset.storagePath.split("/");
+            const objectName = objectPathParts.join("/");
+
+            url = await minioService.getPresignedUrl(
+              bucketName,
+              objectName,
+              60 * 60,
+            );
+          } catch (err) {
+            console.error(
+              `Failed to generate signed URL for asset ${asset.id}:`,
+              err,
+            );
+          }
+        }
+
+        // Generate thumbnail URL
+        if (asset.thumbnailPath) {
+          try {
+            const [thumbBucket, ...thumbPathParts] =
+              asset.thumbnailPath.split("/");
+            const thumbObjectName = thumbPathParts.join("/");
+            thumbnailUrl = await minioService.getPresignedUrl(
+              thumbBucket,
+              thumbObjectName,
+              60 * 60,
+            );
+          } catch (err) {
+            console.error(
+              `Failed to generate thumbnail URL for asset ${asset.id}:`,
+              err,
+            );
+          }
+        }
+
+        // Generate transcoded URLs
+        if (
+          asset.transcodedPaths &&
+          typeof asset.transcodedPaths === "object"
+        ) {
+          for (const [quality, path] of Object.entries(asset.transcodedPaths)) {
+            try {
+              const [transcodeBucket, ...transcodePathParts] = (
+                path as string
+              ).split("/");
+              const transcodeObjectName = transcodePathParts.join("/");
+              transcodedUrls[quality] = await minioService.getPresignedUrl(
+                transcodeBucket,
+                transcodeObjectName,
+                60 * 60,
+              );
+            } catch (err) {
+              console.error(
+                `Failed to generate transcode URL for ${quality} of asset ${asset.id}:`,
+                err,
+              );
+            }
+          }
+        }
+
+        return {
+          ...assetJson,
+          url,
+          thumbnailUrl,
+          transcodedUrls,
+        };
+      }),
+    );
+
+    return res.status(200).json({
+      message: "User assets retrieved successfully",
+      assets: decoratedAssets,
+      pagination: {
+        total: count,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(count / Number(limit)),
+      },
+    });
+  } catch (error) {
+    logger.error("Error fetching user assets:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const getAssetsByType = async (
+  req: express.Request,
+  res: express.Response,
+): Promise<express.Response> => {
+  try {
+    const { type } = req.params;
+    const { page = 1, limit = 20 } = req.query as {
+      page?: string;
+      limit?: string;
+    };
+
+    const offset = (Number(page) - 1) * Number(limit);
+
+    const { count, rows } = await Asset.findAndCountAll({
+      where: { type },
+      limit: Number(limit),
+      offset,
+      order: [["created_at", "DESC"]],
+    });
+
+    const decoratedAssets = await Promise.all(
+      rows.map(async (asset) => {
+        const assetJson = asset.toJSON();
+        let url = asset.url || "";
+        let thumbnailUrl = "";
+        let transcodedUrls = [];
+
+        // Generate signed URL for original
+        try {
+          const [bucketName, ...objectPathParts] = asset.storagePath.split("/");
+          const objectName = objectPathParts.join("/");
+          url = await minioService.getPresignedUrl(
+            bucketName,
+            objectName,
+            60 * 60,
+          );
+        } catch (err) {
+          console.error(
+            `Failed to generate signed URL for asset ${asset.id}:`,
+            err,
+          );
+        }
+
+        // Generate thumbnail URL
+        if (asset.thumbnailPath) {
+          try {
+            const [thumbBucket, ...thumbPathParts] =
+              asset.thumbnailPath.split("/");
+            const thumbObjectName = thumbPathParts.join("/");
+            thumbnailUrl = await minioService.getPresignedUrl(
+              thumbBucket,
+              thumbObjectName,
+              60 * 60,
+            );
+          } catch (err) {
+            console.error(
+              `Failed to generate thumbnail URL for asset ${asset.id}:`,
+              err,
+            );
+          }
+        }
+
+        // Generate transcoded URLs
+        if (
+          asset.transcodedPaths &&
+          typeof asset.transcodedPaths === "object"
+        ) {
+          transcodedUrls = [];
+          for (const [quality, path] of Object.entries(asset.transcodedPaths)) {
+            try {
+              const [transcodeBucket, ...transcodePathParts] = (
+                path as string
+              ).split("/");
+              const transcodeObjectName = transcodePathParts.join("/");
+              transcodedUrls[quality] = await minioService.getPresignedUrl(
+                transcodeBucket,
+                transcodeObjectName,
+                60 * 60,
+              );
+            } catch (err) {
+              console.error(
+                `Failed to generate transcode URL for ${quality} of asset ${asset.id}:`,
+                err,
+              );
+            }
+          }
+        }
+
+        return {
+          ...assetJson,
+          url,
+          thumbnailUrl,
+          transcodedUrls,
+        };
+      }),
+    );
+
+    return res.status(200).json({
+      message: `Assets of type '${type}' retrieved successfully`,
+      assets: decoratedAssets,
+      pagination: {
+        total: count,
+        page: Number(page),
+        limit: Number(limit),
+        totalPages: Math.ceil(count / Number(limit)),
+      },
+    });
+  } catch (error) {
+    logger.error("Error fetching assets by type:", error);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -377,179 +851,6 @@ export const deleteAsset = async (
     });
   } catch (error) {
     logger.error("Error deleting asset:", error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-export const getAssetsByUser = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<express.Response> => {
-  try {
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ message: "User not authenticated" });
-    }
-
-    const {
-      page = 1,
-      limit = 10,
-      type,
-      search,
-      includePublic = "false",
-      sortBy = "createdAt:desc",
-    } = req.query as {
-      page?: string;
-      limit?: string;
-      type?: string;
-      search?: string;
-      includePublic?: string;
-      sortBy?: string;
-    };
-
-    const offset = (Number(page) - 1) * Number(limit);
-    const filters: any[] = [];
-
-    // Add filter for assets owned by the user
-    filters.push({ owner_id: userId });
-
-    // Add condition for public assets (if express.requested)
-    if (includePublic === "true") {
-      filters.push({ visibility: "public" });
-    }
-
-    const searchConditions: any[] = [];
-    if (search) {
-      searchConditions.push(
-        { name: { [Op.iLike]: `%${search}%` } },
-        { description: { [Op.iLike]: `%${search}%` } },
-        { tags: { [Op.contains]: [search] } },
-        { metadata: { [Op.contains]: { search } } },
-      );
-    }
-
-    const where: any = {};
-
-    // Combining both conditions (owner + public)
-    if (filters.length > 0 && searchConditions.length > 0) {
-      where[Op.or] = [
-        { [Op.and]: filters },
-        {
-          [Op.and]: [
-            { owner_id: { [Op.ne]: userId } },
-            { visibility: "public" },
-          ],
-        },
-      ];
-    } else if (filters.length > 0) {
-      where[Op.or] = filters;
-    } else if (searchConditions.length > 0) {
-      where[Op.or] = searchConditions;
-    }
-
-    if (type) {
-      where.type = type;
-    }
-
-    const [sortField, sortOrder] = (sortBy as string).split(":");
-    const validFields = ["createdAt", "name", "size"];
-    const validOrders = ["asc", "desc"];
-    const order: any = [];
-
-    if (validFields.includes(sortField) && validOrders.includes(sortOrder)) {
-      order.push([
-        sortField === "createdAt" ? "created_at" : sortField,
-        sortOrder.toUpperCase(),
-      ]);
-    } else {
-      order.push(["created_at", "DESC"]);
-    }
-
-    const { count, rows } = await Asset.findAndCountAll({
-      where,
-      limit: Number(limit),
-      offset,
-      order,
-    });
-
-    const decoratedAssets = await Promise.all(
-      rows.map(async (asset) => {
-        let url = asset.url || "";
-
-        if (asset.visibility === "private") {
-          try {
-            const [bucketName, ...objectPathParts] =
-              asset.storagePath.split("/");
-            const objectName = objectPathParts.join("/");
-
-            url = await minioService.getPresignedUrl(
-              bucketName,
-              objectName,
-              60 * 60,
-            );
-          } catch (err) {
-            console.error(
-              `Failed to generate signed URL for asset ${asset.id}:`,
-              err,
-            );
-          }
-        }
-
-        return {
-          ...asset.toJSON(),
-          url,
-        };
-      }),
-    );
-
-    return res.status(200).json({
-      message: "User assets retrieved successfully",
-      assets: decoratedAssets,
-      pagination: {
-        total: count,
-        page: Number(page),
-        limit: Number(limit),
-        totalPages: Math.ceil(count / Number(limit)),
-      },
-    });
-  } catch (error) {
-    logger.error("Error fetching user assets:", error);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-export const getAssetsByType = async (
-  req: express.Request,
-  res: express.Response,
-): Promise<express.Response> => {
-  try {
-    const { type } = req.params;
-    const { page = 1, limit = 20 } = req.query as {
-      page?: string;
-      limit?: string;
-    };
-
-    const offset = (Number(page) - 1) * Number(limit);
-
-    const { count, rows } = await Asset.findAndCountAll({
-      where: { type },
-      limit: Number(limit),
-      offset,
-      order: [["created_at", "DESC"]],
-    });
-
-    return res.status(200).json({
-      message: `Assets of type '${type}' retrieved successfully`,
-      assets: rows,
-      pagination: {
-        total: count,
-        page: Number(page),
-        limit: Number(limit),
-        totalPages: Math.ceil(count / Number(limit)),
-      },
-    });
-  } catch (error) {
-    logger.error("Error fetching assets by type:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };

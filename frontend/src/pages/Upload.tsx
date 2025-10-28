@@ -88,21 +88,38 @@ export default function UploadPage() {
     setIsUploading(true);
 
     try {
+      let allSuccessful = true;
+      const errors: string[] = [];
+
       for (const upload of pendingUploads) {
         try {
           await uploadSingleFile(upload);
         } catch (err) {
+          allSuccessful = false;
+          errors.push(upload.file.name);
           console.error("Upload failed for", upload.file.name, err);
         }
       }
 
-      toast.success(
-        "All files uploaded successfully!, Redirecting to gallery...",
-        { autoClose: 1700 },
-      );
-      setTimeout(() => {
-        navigate("/gallery");
-      }, 2000);
+      if (allSuccessful) {
+        toast.success(
+          "All files uploaded successfully! Redirecting to gallery...",
+          { autoClose: 1700 },
+        );
+        setTimeout(() => {
+          navigate("/gallery");
+        }, 2000);
+      } else {
+        toast.error(
+          `Failed to upload ${errors.length} file(s): ${errors.join(", ")}`,
+          { autoClose: 5000 },
+        );
+      }
+    } catch (err) {
+      console.error("Unexpected error during upload:", err);
+      toast.error("An unexpected error occurred during upload", {
+        autoClose: 3000,
+      });
     } finally {
       setIsUploading(false);
     }

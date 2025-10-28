@@ -1,15 +1,5 @@
 import React, { useState } from "react";
-import {
-  Upload,
-  // X,
-  // File,
-  // Image,
-  // Video,
-  // FileText,
-  // Music,
-  // CheckCircle,
-  // AlertCircle,
-} from "lucide-react";
+import { Upload } from "lucide-react";
 
 export const UploadDropzone = ({
   onFilesSelected,

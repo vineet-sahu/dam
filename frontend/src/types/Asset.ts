@@ -1,3 +1,6 @@
+import { ReactNode } from "react";
+import type { User } from "./User";
+
 export interface AssetMetadata {
   width?: number;
   height?: number;
@@ -13,29 +16,46 @@ export type AssetStatus = "pending" | "processing" | "completed" | "failed";
 export type AssetVisibility = "private" | "team" | "public";
 
 export interface Asset {
-  id?: string;
-  name?: string;
-  filename?: string;
-  originalName?: string;
-  type?: string;
-  mimeType?: string;
-  url?: string;
+  thumbnail: ReactNode;
+  id: string;
+  name: string;
+  filename: string;
+  originalName: string;
+  type: string;
+  mimeType: string;
+  url: string;
   description?: string | null;
-  size?: number;
-  storagePath?: string;
+  size: string;
+  storagePath: string;
   thumbnailPath?: string | null;
+  thumbnailUrl?: string | null;
   transcodedPaths?: Record<string, string> | null;
-  tags?: string[];
+  transcodedUrls?: Record<string, string>;
+  tags: string[];
   metadata?: AssetMetadata | null;
-  uploadDate?: Date;
-  downloadCount?: number;
-  status?: AssetStatus;
+  uploadDate: string;
+  lastDownloadedAt?: string;
+  downloadCount: number;
+  status: AssetStatus;
   errorMessage?: string | null;
-  visibility?: AssetVisibility;
-  owner_id?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  visibility: AssetVisibility;
+  owner_id: string;
+  owner?: Pick<User, "id" | "name" | "email">;
+  createdAt: string;
+  updatedAt: string;
 }
+
+/**
+ * For paginated asset API responses.
+ */
+export interface PaginatedAssets {
+  assets: Asset[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export type UploadStatus = "pending" | "uploading" | "completed" | "error";
 
 export interface UploadItemData {
   file: File;
@@ -52,5 +72,3 @@ export interface UploadAssetParams {
   formData: FormData;
   onProgress?: (percent: number) => void;
 }
-
-export type UploadStatus = "pending" | "uploading" | "completed" | "error";

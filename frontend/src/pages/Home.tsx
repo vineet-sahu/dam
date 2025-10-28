@@ -14,6 +14,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { useAuthContext } from "../context/AuthContext";
+import { Link } from "react-router-dom";
 
 const HomePage: React.FC = () => {
   const { isLoggedIn } = useAuthContext();
@@ -132,23 +133,29 @@ const HomePage: React.FC = () => {
 
           {/* Action Buttons Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto mb-16">
-            <button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-xl p-8 transition shadow-lg hover:shadow-purple-500/50 group">
+            <Link
+              to={"/upload"}
+              className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-xl p-8 transition shadow-lg hover:shadow-purple-500/50 group"
+            >
               <Upload className="w-12 h-12 mx-auto mb-4 group-hover:scale-110 transition" />
               <h3 className="text-2xl font-bold mb-2">Upload Assets</h3>
               <p className="text-purple-100">
                 Drag and drop files or folders to start uploading. Supports bulk
                 uploads with automatic processing.
               </p>
-            </button>
+            </Link>
 
-            <button className="bg-gradient-to-r from-pink-600 to-pink-700 hover:from-pink-700 hover:to-pink-800 text-white rounded-xl p-8 transition shadow-lg hover:shadow-pink-500/50 group">
+            <Link
+              to={"/gallery"}
+              className="bg-gradient-to-r from-pink-600 to-pink-700 hover:from-pink-700 hover:to-pink-800 text-white rounded-xl p-8 transition shadow-lg hover:shadow-pink-500/50 group"
+            >
               <FolderOpen className="w-12 h-12 mx-auto mb-4 group-hover:scale-110 transition" />
               <h3 className="text-2xl font-bold mb-2">View Digital Assets</h3>
               <p className="text-pink-100">
                 Browse your asset library with advanced search, filters, and
                 preview capabilities.
               </p>
-            </button>
+            </Link>
           </div>
 
           {/* Asset Type Cards */}

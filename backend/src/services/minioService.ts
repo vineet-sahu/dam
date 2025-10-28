@@ -114,7 +114,7 @@ class MinioService {
   async getPresignedUrl(
     bucketName: string,
     objectName: string,
-    expirySeconds: number = 3600,
+    expirySeconds: number = 60,
   ): Promise<string> {
     try {
       const url = await this.client.presignedGetObject(

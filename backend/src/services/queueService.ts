@@ -1,13 +1,16 @@
+// src/queues/assetQueue.ts
 import { Queue } from "bullmq";
 import Redis from "ioredis";
 import logger from "../utils/logger";
 
+// Redis connection
 const connection = new Redis({
   host: process.env.REDIS_HOST || "localhost",
   port: parseInt(process.env.REDIS_PORT || "6379"),
   maxRetriesPerRequest: null,
 });
 
+// Create queues
 const imageQueue = new Queue("image-processing", {
   connection,
   defaultJobOptions: {
@@ -34,14 +37,39 @@ const videoQueue = new Queue("video-processing", {
   },
 });
 
-interface AssetJobData {
+// Combined asset queue for admin operations
+export const assetQueue = new Queue("asset-processing", {
+  connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: "exponential",
+      delay: 2000,
+    },
+    removeOnComplete: 100,
+    removeOnFail: 500,
+  },
+});
+
+// Job data interface
+export interface AssetJobData {
   assetId: string;
+  userId?: string;
   bucketName: string;
   objectName: string;
+  filePath?: string;
+  filename?: string;
   mimeType: string;
+  size?: number;
   type: "image" | "video" | "document";
+  processType?: "thumbnail" | "optimization" | "conversion" | "metadata";
+  options?: {
+    width?: number;
+    height?: number;
+    quality?: number;
+    format?: string;
+  };
 }
-
 class QueueService {
   async addImageProcessingJob(data: AssetJobData) {
     try {
@@ -181,3 +209,240 @@ class QueueService {
 }
 
 export default new QueueService();
+
+export const addAssetJob = async (
+  data: AssetJobData,
+  priority?: number,
+): Promise<any> => {
+  try {
+    const job = await assetQueue.add(`process-${data.type}`, data, {
+      priority: priority || 0,
+      jobId: `${data.assetId}-${data.processType || "processing"}-${Date.now()}`,
+    });
+
+    logger.info(`Asset job added to queue: ${job.id}`, {
+      assetId: data.assetId,
+      type: data.type,
+      processType: data.processType,
+    });
+
+    return job;
+  } catch (error) {
+    logger.error("Error adding job to queue:", error);
+    throw error;
+  }
+};
+
+export const getWaitingCount = async (): Promise<number> => {
+  return await assetQueue.getWaitingCount();
+};
+
+export const getActiveCount = async (): Promise<number> => {
+  return await assetQueue.getActiveCount();
+};
+
+export const getCompletedCount = async (): Promise<number> => {
+  return await assetQueue.getCompletedCount();
+};
+
+export const getFailedCount = async (): Promise<number> => {
+  return await assetQueue.getFailedCount();
+};
+
+export const getDelayedCount = async (): Promise<number> => {
+  return await assetQueue.getDelayedCount();
+};
+
+export const getPausedCount = async (): Promise<number> => {
+  const jobCounts = await assetQueue.getJobCounts();
+  return jobCounts.paused || 0;
+};
+
+// Get jobs by status
+export const getWaiting = async (start: number, end: number) => {
+  return await assetQueue.getJobs(["waiting"], start, end);
+};
+
+export const getActive = async (start: number, end: number) => {
+  return await assetQueue.getJobs(["active"], start, end);
+};
+
+export const getCompleted = async (start: number, end: number) => {
+  return await assetQueue.getJobs(["completed"], start, end);
+};
+
+export const getFailed = async (start: number, end: number) => {
+  return await assetQueue.getJobs(["failed"], start, end);
+};
+
+export const getDelayed = async (start: number, end: number) => {
+  return await assetQueue.getJobs(["delayed"], start, end);
+};
+
+export const getJobs = async (types: string[], start: number, end: number) => {
+  return await assetQueue.getJobs(types as any, start, end);
+};
+
+// Get specific job
+export const getJob = async (jobId: string) => {
+  return await assetQueue.getJob(jobId);
+};
+
+// Clean queue
+export const clean = async (
+  grace: number,
+  limit: number,
+  type: "completed" | "failed",
+): Promise<string[]> => {
+  return await assetQueue.clean(grace, limit, type);
+};
+
+// Queue management
+export const pauseAssetQueue = async (): Promise<void> => {
+  await assetQueue.pause();
+  logger.info("Asset queue paused");
+};
+
+export const resumeAssetQueue = async (): Promise<void> => {
+  await assetQueue.resume();
+  logger.info("Asset queue resumed");
+};
+
+// Empty queue
+export const emptyQueue = async (): Promise<void> => {
+  await assetQueue.drain();
+  logger.info("Asset queue emptied");
+};
+
+// Get queue statistics
+export const getQueueStatistics = async () => {
+  const jobCounts = await assetQueue.getJobCounts();
+
+  return {
+    waiting: jobCounts.waiting || 0,
+    active: jobCounts.active || 0,
+    completed: jobCounts.completed || 0,
+    failed: jobCounts.failed || 0,
+    delayed: jobCounts.delayed || 0,
+    paused: jobCounts.paused || 0,
+    total:
+      (jobCounts.waiting || 0) +
+      (jobCounts.active || 0) +
+      (jobCounts.completed || 0) +
+      (jobCounts.failed || 0) +
+      (jobCounts.delayed || 0) +
+      (jobCounts.paused || 0),
+  };
+};
+
+// Get job status
+export const getJobStatus = async (jobId: string) => {
+  try {
+    const job = await assetQueue.getJob(jobId);
+
+    if (!job) {
+      return null;
+    }
+
+    const state = await job.getState();
+
+    return {
+      id: job.id,
+      name: job.name,
+      state,
+      progress: job.progress,
+      data: job.data,
+      returnvalue: job.returnvalue,
+      failedReason: job.failedReason,
+      stacktrace: job.stacktrace,
+      attemptsMade: job.attemptsMade,
+      processedOn: job.processedOn,
+      finishedOn: job.finishedOn,
+      timestamp: job.timestamp,
+    };
+  } catch (error) {
+    logger.error("Error getting job status:", error);
+    throw error;
+  }
+};
+
+// Retry all failed jobs
+export const retryAllFailedJobs = async (): Promise<number> => {
+  const failedJobs = await assetQueue.getJobs(["failed"]);
+  let retried = 0;
+
+  for (const job of failedJobs) {
+    try {
+      await job.retry();
+      retried++;
+    } catch (error) {
+      logger.error(`Failed to retry job ${job.id}:`, error);
+    }
+  }
+
+  logger.info(`Retried ${retried} failed jobs`);
+  return retried;
+};
+
+// Clean old jobs
+export const cleanOldJobs = async (
+  grace: number = 24 * 3600 * 1000,
+): Promise<void> => {
+  const completed = await assetQueue.clean(grace, 1000, "completed");
+  const failed = await assetQueue.clean(grace, 1000, "failed");
+  logger.info(
+    `Cleaned ${completed.length} completed and ${failed.length} failed jobs`,
+  );
+};
+
+// Remove job by ID
+export const removeJobById = async (jobId: string): Promise<void> => {
+  const job = await assetQueue.getJob(jobId);
+  if (job) {
+    await job.remove();
+    logger.info(`Job ${jobId} removed`);
+  }
+};
+
+// Health check
+export const healthCheck = async (): Promise<boolean> => {
+  try {
+    await connection.ping();
+    return true;
+  } catch (error) {
+    logger.error("Queue health check failed:", error);
+    return false;
+  }
+};
+
+// Graceful shutdown
+export const closeQueue = async (): Promise<void> => {
+  logger.info("Closing all queues...");
+  await Promise.all([
+    assetQueue.close(),
+    imageQueue.close(),
+    videoQueue.close(),
+  ]);
+  await connection.quit();
+  logger.info("All queues closed");
+};
+
+// Add methods directly to assetQueue object for backward compatibility
+Object.assign(assetQueue, {
+  getWaitingCount,
+  getActiveCount,
+  getCompletedCount,
+  getFailedCount,
+  getDelayedCount,
+  getPausedCount,
+  getWaiting,
+  getActive,
+  getCompleted,
+  getFailed,
+  getDelayed,
+  getJobs,
+  clean,
+});
+
+// Export queues
+export { imageQueue, videoQueue, connection };

@@ -59,9 +59,59 @@ export const assetApi = {
     await api.delete(`/assets/${id}`);
   },
 
-  downloadAsset: async (id: string): Promise<string> => {
-    const { data } = await api.get(`/assets/${id}/download`);
-    return data.url;
+  downloadAsset: async (
+    id: string,
+    type: "original" | "thumbnail" | "transcode" = "original",
+    quality?: string,
+  ): Promise<void> => {
+    try {
+      let endpoint = "";
+
+      switch (type) {
+        case "original":
+          endpoint = `/assets/${id}/download`;
+          break;
+        case "thumbnail":
+          endpoint = `/assets/${id}/download/thumbnail`;
+          break;
+        case "transcode":
+          if (!quality)
+            throw new Error(
+              "Quality parameter required for transcode download",
+            );
+          endpoint = `/assets/${id}/download/transcode/${quality}`;
+          break;
+        default:
+          throw new Error("Invalid download type");
+      }
+
+      // Request the file as binary data
+      const response = await api.get(endpoint, {
+        responseType: "blob",
+      });
+
+      const blob = new Blob([response.data]);
+      const downloadUrl = window.URL.createObjectURL(blob);
+
+      const contentDisposition = response.headers["content-disposition"];
+      let filename = "downloaded_file";
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) filename = match[1];
+      }
+
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error("Asset download failed:", error);
+      alert("Failed to download file. Please try again.");
+    }
   },
 };
 

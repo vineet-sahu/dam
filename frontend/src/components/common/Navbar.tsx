@@ -62,7 +62,7 @@ const Navbar: React.FC = React.memo(function Navbar() {
   const authLinks: RouteItem[] = useMemo(() => {
     if (isLoggedIn) {
       return [
-        { path: "/profile", label: "Profile" },
+        // { path: "/profile", label: "Profile" },
         { path: "/logout", label: "Logout" },
       ];
     }
