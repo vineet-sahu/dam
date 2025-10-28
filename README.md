@@ -57,13 +57,6 @@ docker-compose down -v  # Removes volumes too
 docker-compose up -d
 ```
 
-## 📝 Next Steps (Day 2)
-
-- [ ] Create database schema (Sequelize models)
-- [ ] Implement file upload endpoint
-- [ ] Test file upload to MinIO
-- [ ] Add basic asset listing endpoint
-
 ## 🤝 Contributing
 
 1. Create feature branch
