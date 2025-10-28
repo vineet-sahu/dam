@@ -55,39 +55,4 @@ lsof -i :3000  # or 5432, 6379, 9000
 ```bash
 docker-compose down -v  # Removes volumes too
 docker-compose up -d
-```
-
-## 🤝 Contributing
-
-1. Create feature branch
-2. Make changes
-3. Test locally
-4. Submit PR
-
-## 📄 License
-
-MIT
-
-
-project-root/
-├── src/
-│   ├── config/
-│   │   └── database.ts
-│   ├── controllers/
-│   │   └── assetController.ts
-│   ├── middleware/
-│   │   └── upload.ts
-│   ├── models/
-│   │   ├── Asset.ts
-│   │   └── User.ts
-│   ├── routes/
-│   │   └── asset.routes.ts
-│   ├── types/
-│   │   └── Asset.ts
-│   ├── server.ts 
-│   └── app.ts
-├── package.json
-├── tsconfig.json
-├── .env
-├── .gitignore
-└── dist/          
+```     
