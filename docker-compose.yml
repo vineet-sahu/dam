@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
+ 
   postgres:
     image: postgres:15-alpine
     container_name: dam-postgres
@@ -12,7 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432"  # ✅ External:5433 -> Internal:5432
+      - "5433:5432" 
     networks:
       - dam-network
     healthcheck:
@@ -21,7 +21,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis for BullMQ
+ 
   redis:
     image: redis:7-alpine
     container_name: dam-redis
@@ -29,7 +29,7 @@ services:
     volumes:
       - redis_data:/data
     ports:
-      - "6380:6379"  # ✅ FIXED: External:6380 -> Internal:6379 (avoid conflict with local Redis)
+      - "6380:6379" 
     networks:
       - dam-network
     healthcheck:
@@ -38,7 +38,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # MinIO Object Storage
+ 
   minio:
     image: minio/minio:latest
     container_name: dam-minio
@@ -59,7 +59,7 @@ services:
       timeout: 20s
       retries: 3
 
-  # Backend API Service
+ 
   api:
     build:
       context: ./backend
@@ -67,20 +67,20 @@ services:
     container_name: dam-api
     environment:
       NODE_ENV: ${NODE_ENV:-development}
-      PORT: 3000  # ✅ Internal port that app listens on
+      PORT: 3000 
       
-      # Database - INTERNAL container port (not the host port!)
+     
       DB_HOST: postgres
-      DB_PORT: 5432  # ✅ FIXED: Must be 5432 (internal port inside docker network)
+      DB_PORT: 5432 
       DB_NAME: ${POSTGRES_DB:-dam}
       DB_USER: ${POSTGRES_USER:-postgres}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-password}
       
-      # Redis - INTERNAL container port (not the host port!)
+     
       REDIS_HOST: redis
-      REDIS_PORT: 6379  # ✅ Already correct: Must be 6379 (internal port inside docker network)
+      REDIS_PORT: 6379 
       
-      # MinIO
+     
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
       MINIO_USE_SSL: "false"
@@ -90,17 +90,17 @@ services:
       MINIO_BUCKET_THUMBNAILS: thumbnails
       MINIO_BUCKET_TRANSCODED: transcoded
       
-      # JWT
+     
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       
-      # File Upload
+     
       MAX_FILE_SIZE: ${MAX_FILE_SIZE:-524288000}
     volumes:
       - ./backend:/app
       - /app/node_modules
     ports:
-      - "3004:3000"  # ✅ FIXED: External:3004 -> Internal:3000 (matches PORT env var)
+      - "3004:3000" 
     networks:
       - dam-network
     depends_on:
@@ -112,7 +112,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Worker Service (Asset Processor)
+ 
   worker:
     build:
       context: ./workers
@@ -129,18 +129,18 @@ services:
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       
-      # Database - INTERNAL container port (not the host port!)
+     
       DB_HOST: postgres
-      DB_PORT: 5432  # ✅ FIXED: Must be 5432 (internal port inside docker network)
+      DB_PORT: 5432 
       DB_NAME: ${POSTGRES_DB:-dam}
       DB_USER: ${POSTGRES_USER:-postgres}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-password}
       
-      # Redis - INTERNAL container port (not the host port!)
+     
       REDIS_HOST: redis
-      REDIS_PORT: 6379  # ✅ Already correct: Must be 6379 (internal port inside docker network)
+      REDIS_PORT: 6379 
       
-      # MinIO
+     
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
       MINIO_USE_SSL: "false"
@@ -150,7 +150,7 @@ services:
       MINIO_BUCKET_THUMBNAILS: thumbnails
       MINIO_BUCKET_TRANSCODED: transcoded
       
-      # Worker Configuration
+     
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-5}
     volumes:
       - ./workers:/app
@@ -166,7 +166,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # BullMQ Dashboard (Bull Board)
+ 
   bull-board:
     build:
       context: ./backend
@@ -174,10 +174,10 @@ services:
     container_name: dam-bull-board
     environment:
       REDIS_HOST: redis
-      REDIS_PORT: 6379  # ✅ Already correct
-      PORT: 3001  # ✅ Internal port that app listens on
+      REDIS_PORT: 6379 
+      PORT: 3001 
     ports:
-      - "3005:3001"  # ✅ FIXED: External:3005 -> Internal:3001 (matches PORT env var)
+      - "3005:3001" 
     networks:
       - dam-network
     depends_on:
@@ -185,7 +185,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Frontend
+ 
   frontend:
     build:
       context: ./frontend
@@ -204,7 +204,7 @@ services:
       - api
     restart: unless-stopped
 
-  # Nginx Reverse Proxy (Optional - for production)
+ 
   nginx:
     image: nginx:alpine
     container_name: dam-nginx

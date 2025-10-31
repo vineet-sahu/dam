@@ -1,13 +1,21 @@
-import { Routes, Route, Navigate } from "react-router-dom";
-import Home from "../pages/Home";
-import { Dashboard } from "../pages/Dashboard";
-import SignInPage from "../pages/SignIn";
-import { Signup as SignupPage } from "../pages/Signup";
-import ProtectedRoute from "./protectedRoutes";
-import UploadPage from "../pages/Upload";
-import GalleryPage from "../pages/Gallery";
-import { useAuthContext } from "../context/AuthContext";
-import { Logout } from "../components/common/Logout";
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Home from '../pages/Home';
+import SignInPage from '../pages/SignIn';
+import { Signup as SignupPage } from '../pages/Signup';
+import ProtectedRoute from './protected-routes';
+import UploadPage from '../pages/Upload';
+import GalleryPage from '../pages/Gallery';
+import { useAuthContext } from '../context/AuthContext';
+import { Logout } from '../components/common/Logout';
+import AssetViewPage from '../pages/AssetViewPage';
+import SharedAssetPage from '../pages/SharedAssetPage';
+import MySharesPage from '../pages/MySharesPage';
+import AdminDashboard from '../pages/AdminDashboard';
+import AdminRoute from './admin-routes';
+import NotFound from '../pages/errors/NotFound';
+import ServerError from '../pages/errors/ServerError';
+import Forbidden from '../pages/errors/Forbidden';
+import Unauthorized from '../pages/errors/Unauthorized';
 
 export const AppRoutes = () => {
   const { isLoggedIn } = useAuthContext();
@@ -33,22 +41,50 @@ export const AppRoutes = () => {
         }
       />
       <Route
-        path="/signIn"
-        element={isLoggedIn ? <Navigate to="/" replace /> : <SignInPage />}
-      />
-      <Route
-        path="/signUp"
-        element={isLoggedIn ? <Navigate to="/" replace /> : <SignupPage />}
-      />
-      <Route
-        path="/dashboard"
+        path="/asset/:id"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <AssetViewPage />
           </ProtectedRoute>
         }
       />
+
+      <Route
+        path="/share/:token"
+        element={
+          <ProtectedRoute>
+            <SharedAssetPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/my-shares"
+        element={
+          <ProtectedRoute>
+            <MySharesPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route path="/signIn" element={isLoggedIn ? <Navigate to="/" replace /> : <SignInPage />} />
+      <Route path="/signUp" element={isLoggedIn ? <Navigate to="/" replace /> : <SignupPage />} />
+
+      <Route
+        path="/admin/dashboard"
+        element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        }
+      />
       <Route path="/logout" element={<Logout />} />
+
+      <Route path="/401" element={<Unauthorized />} />
+      <Route path="/403" element={<Forbidden />} />
+      <Route path="/500" element={<ServerError />} />
+      <Route path="/404" element={<NotFound />} />
+
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };

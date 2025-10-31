@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { useAssets, useDeleteAsset } from "../hooks/useAsset";
-import { useAssetContext } from "../context/Assetcontext";
-import { NavLink } from "react-router-dom";
-import { useAuthContext } from "../context/AuthContext";
+import React, { useEffect, useState } from 'react';
+import { useAssets, useDeleteAsset } from '../hooks/useAsset';
+import { useAssetContext } from '../context/Assetcontext';
+import { NavLink } from 'react-router-dom';
+import { useAuthContext } from '../context/AuthContext';
+import ShareModal from '../components/common/ShareModal';
+import { Eye, Share2, Trash2 } from 'lucide-react';
 
 const GalleryPage: React.FC = () => {
   const {
@@ -21,7 +23,7 @@ const GalleryPage: React.FC = () => {
     page: currentPage,
     limit: itemsPerPage,
     search: search || undefined,
-    type: filter.type !== "all" ? filter.type : undefined,
+    type: filter.type !== 'all' ? filter.type : undefined,
     visibility: filter.visibility,
     sortBy: sortBy || undefined,
     tags: filter.tags,
@@ -29,6 +31,12 @@ const GalleryPage: React.FC = () => {
 
   const { mutate, isPending: deleteAssetIsPending } = useDeleteAsset();
   const [localSearch, setLocalSearch] = useState(search);
+  const [shareModalAsset, setShareModalAsset] = useState<{
+    id: string;
+    name: string;
+    type: string;
+    thumbnailUrl?: string;
+  } | null>(null);
 
   const { user } = useAuthContext();
 
@@ -45,7 +53,7 @@ const GalleryPage: React.FC = () => {
   }, [search, filter, sortBy]);
 
   const handleDelete = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this asset?")) {
+    if (window.confirm('Are you sure you want to delete this asset?')) {
       mutate(id);
     }
   };
@@ -58,13 +66,22 @@ const GalleryPage: React.FC = () => {
       <div className="max-w-4xl mx-auto px-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Gallery</h1>
-          <NavLink
-            to="/upload"
-            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center space-x-2"
-          >
-            <span>+</span>
-            <span>Upload Asset</span>
-          </NavLink>
+          <div className="flex space-x-2">
+            <NavLink
+              to="/my-shares"
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center space-x-2"
+            >
+              <span>🔗</span>
+              <span>My Shares</span>
+            </NavLink>
+            <NavLink
+              to="/upload"
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center space-x-2"
+            >
+              <span>+</span>
+              <span>Upload Asset</span>
+            </NavLink>
+          </div>
         </div>
 
         <div className="flex flex-col md:flex-row md:items-center md:space-x-4 mb-6">
@@ -77,10 +94,8 @@ const GalleryPage: React.FC = () => {
           />
 
           <select
-            value={filter.type || "all"}
-            onChange={(e) =>
-              setFilter({ ...filter, type: e.target.value as any })
-            }
+            value={filter.type || 'all'}
+            onChange={(e) => setFilter({ ...filter, type: e.target.value as any })}
             className="w-full md:w-1/4 mb-2 md:mb-0 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
           >
             <option value="all">All Types</option>
@@ -112,7 +127,7 @@ const GalleryPage: React.FC = () => {
 
         {isError && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-            Error loading assets: {(error as any)?.message || "Unknown error"}
+            Error loading assets: {(error as any)?.message || 'Unknown error'}
           </div>
         )}
 
@@ -127,43 +142,81 @@ const GalleryPage: React.FC = () => {
                     key={asset.id}
                     className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition group relative"
                   >
-                    {asset.type === "image" && asset.url ? (
-                      <img
-                        src={asset.url}
-                        alt={asset.name}
-                        className="w-full h-40 object-cover"
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-40 bg-gray-100 text-gray-500 font-medium">
-                        {asset.type === "video" && "🎥 Video"}
-                        {asset.type === "audio" && "🎵 Audio"}
-                        {asset.type === "document" && "📄 Document"}
-                      </div>
-                    )}
+                    <NavLink to={`/asset/${asset.id}`}>
+                      {(asset.type === 'image' || asset.type === 'video') &&
+                      (asset.thumbnailUrl || asset.url) ? (
+                        <img
+                          src={asset.thumbnailUrl || asset.url}
+                          alt={asset.name}
+                          className="w-full h-40 object-cover"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-40 bg-gray-100 text-gray-500 font-medium">
+                          {asset.type === 'video' && '🎥 Video'}
+                          {asset.type === 'audio' && '🎵 Audio'}
+                          {asset.type === 'document' && '📄 Document'}
+                        </div>
+                      )}
+                    </NavLink>
 
                     <div className="p-2">
-                      <p className="text-sm font-medium truncate">
-                        {asset.name}
-                      </p>
+                      <NavLink to={`/asset/${asset.id}`}>
+                        <p className="text-sm font-medium truncate hover:text-green-600">
+                          {asset.name}
+                        </p>
+                      </NavLink>
                       <p className="text-xs text-gray-500">
                         {(Number(asset.size) / 1024 / 1024).toFixed(2)} MB
                       </p>
+                      {asset.status && asset.status !== 'completed' && (
+                        <span
+                          className={`inline-block mt-1 px-2 py-1 text-xs rounded ${
+                            asset.status === 'processing'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : asset.status === 'failed'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {asset.status}
+                        </span>
+                      )}
                     </div>
 
                     <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center space-x-2">
-                      <button
-                        onClick={() => window.open(asset.url, "_blank")}
-                        className="px-3 py-1 bg-white text-gray-800 rounded hover:bg-gray-100"
+                      <NavLink
+                        to={`/asset/${asset.id}`}
+                        className="p-2 bg-white text-gray-800 rounded hover:bg-gray-100"
+                        title="View Details"
                       >
-                        View
+                        <Eye className="w-5 h-5" />
+                      </NavLink>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setShareModalAsset({
+                            id: asset.id,
+                            name: asset.name,
+                            type: asset.type,
+                            thumbnailUrl: asset.thumbnailUrl || '',
+                          });
+                        }}
+                        className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        title="Share"
+                      >
+                        <Share2 className="w-5 h-5" />
                       </button>
                       {isOwner && (
                         <button
-                          onClick={() => handleDelete(`${asset.id}`)}
-                          className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleDelete(`${asset.id}`);
+                          }}
+                          className="p-2 bg-red-500 text-white rounded hover:bg-red-600"
+                          title="Delete"
                           disabled={deleteAssetIsPending}
                         >
-                          Delete
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       )}
                     </div>
@@ -181,9 +234,7 @@ const GalleryPage: React.FC = () => {
             {totalPages > 1 && (
               <div className="flex justify-center mt-6 space-x-2">
                 <button
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(prev - 1, 1))
-                  }
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
                   className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -205,9 +256,7 @@ const GalleryPage: React.FC = () => {
                       key={i}
                       onClick={() => setCurrentPage(pageNum)}
                       className={`px-3 py-1 rounded ${
-                        currentPage === pageNum
-                          ? "bg-green-500 text-white"
-                          : "bg-gray-200"
+                        currentPage === pageNum ? 'bg-green-500 text-white' : 'bg-gray-200'
                       }`}
                     >
                       {pageNum}
@@ -215,9 +264,7 @@ const GalleryPage: React.FC = () => {
                   );
                 })}
                 <button
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                  }
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
                   className="px-3 py-1 bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -232,6 +279,18 @@ const GalleryPage: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Share Modal */}
+      {shareModalAsset && (
+        <ShareModal
+          isOpen={!!shareModalAsset}
+          onClose={() => setShareModalAsset(null)}
+          assetId={shareModalAsset.id}
+          assetName={shareModalAsset.name}
+          assetType={shareModalAsset.type}
+          thumbnailUrl={shareModalAsset.thumbnailUrl}
+        />
+      )}
     </div>
   );
 };

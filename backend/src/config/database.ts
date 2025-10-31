@@ -26,6 +26,9 @@ export const connectDatabase = async (): Promise<void> => {
     await sequelize.authenticate();
     logger.info("Database connection established successfully");
 
+    const { initializeAssociations } = await import("./associations");
+    initializeAssociations();
+
     if (process.env.NODE_ENV === "development") {
       await sequelize.sync();
       logger.info("Database models synchronized");

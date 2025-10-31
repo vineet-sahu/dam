@@ -1,49 +1,47 @@
-import { useState } from "react";
-import { useSignIn } from "../hooks/useAuth";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useAuthContext } from "../context/AuthContext";
+import { useState } from 'react';
+import { useSignIn } from '../hooks/useAuth';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuthContext } from '../context/AuthContext';
 
 export default function SignInForm() {
   const [formData, setFormData] = useState({
-    email: "",
-    password: "",
+    email: '',
+    password: '',
     rememberMe: false,
   });
 
   const [errors, setErrors] = useState({
-    email: "",
-    password: "",
+    email: '',
+    password: '',
   });
 
-  const [touched, setTouched] = useState<{ email: boolean; password: boolean }>(
-    {
-      email: false,
-      password: false,
-    },
-  );
+  const [touched, setTouched] = useState<{ email: boolean; password: boolean }>({
+    email: false,
+    password: false,
+  });
 
   const { mutate, isPending, isError, error, isSuccess } = useSignIn();
-  const { setIsLoggedIn } = useAuthContext();
+  const { setIsLoggedIn, setUser } = useAuthContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirectTo = searchParams.get("redirectedTo");
+  const redirectTo = searchParams.get('redirectedTo');
 
   const validateField = (name: string, value: string) => {
-    let error = "";
+    let error = '';
 
-    if (name === "email") {
+    if (name === 'email') {
       if (!value.trim()) {
-        error = "Email is required";
+        error = 'Email is required';
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        error = "Please enter a valid email address";
+        error = 'Please enter a valid email address';
       }
     }
 
-    if (name === "password") {
+    if (name === 'password') {
       if (!value) {
-        error = "Password is required";
+        error = 'Password is required';
       } else if (value.length < 6) {
-        error = "Password must be at least 6 characters";
+        error = 'Password must be at least 6 characters';
       }
     }
 
@@ -83,8 +81,8 @@ export default function SignInForm() {
   const handleSubmit = (e: any) => {
     e.preventDefault();
 
-    const emailError = validateField("email", formData.email);
-    const passwordError = validateField("password", formData.password);
+    const emailError = validateField('email', formData.email);
+    const passwordError = validateField('password', formData.password);
 
     setErrors({
       email: emailError,
@@ -98,14 +96,17 @@ export default function SignInForm() {
 
     if (!emailError && !passwordError) {
       mutate(formData, {
-        onSuccess: () => {
+        onSuccess: (res) => {
           if (setIsLoggedIn) {
             setIsLoggedIn(true);
           }
-          navigate(redirectTo || "/home");
+          if (setUser) {
+            setUser(res.data.user);
+          }
+          navigate(redirectTo || '/home');
         },
         onError: (err: any) => {
-          console.error("Sign in failed:", err);
+          console.error('Sign in failed:', err);
         },
       });
     }
@@ -115,9 +116,7 @@ export default function SignInForm() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg sm:max-w-md p-6 sm:p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome Back
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
           <p className="text-gray-600">Sign in to your account</p>
         </div>
 
@@ -134,16 +133,14 @@ export default function SignInForm() {
               onBlur={handleBlur}
               className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition ${
                 errors.email && touched.email
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:ring-indigo-500"
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:ring-indigo-500'
               }`}
               placeholder="you@example.com"
               disabled={isPending}
             />
             {errors.email && touched.email && (
-              <p className="mt-1 text-sm text-red-600 text-left">
-                {errors.email}
-              </p>
+              <p className="mt-1 text-sm text-red-600 text-left">{errors.email}</p>
             )}
           </div>
 
@@ -159,16 +156,14 @@ export default function SignInForm() {
               onBlur={handleBlur}
               className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition ${
                 errors.password && touched.password
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-gray-300 focus:ring-indigo-500"
+                  ? 'border-red-500 focus:ring-red-500'
+                  : 'border-gray-300 focus:ring-indigo-500'
               }`}
               placeholder="••••••••"
               disabled={isPending}
             />
             {errors.password && touched.password && (
-              <p className="mt-1 text-sm text-red-600 text-left">
-                {errors.password}
-              </p>
+              <p className="mt-1 text-sm text-red-600 text-left">{errors.password}</p>
             )}
           </div>
 
@@ -189,14 +184,12 @@ export default function SignInForm() {
               <input
                 type="checkbox"
                 checked={formData.rememberMe}
-                onChange={(e) =>
-                  setFormData({ ...formData, rememberMe: e.target.checked })
-                }
+                onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })}
                 className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
               />
               <span className="ml-2 text-sm text-gray-600">Remember me</span>
             </label>
-            <button className="text-sm text-indigo-600 hover:text-indigo-500">
+            <button className="text-sm text-indigo-600 hover:text-indigo-500 hidden">
               Forgot password?
             </button>
           </div>
@@ -206,17 +199,14 @@ export default function SignInForm() {
             disabled={isPending}
             className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isPending ? "Signing in..." : "Sign In"}
+            {isPending ? 'Signing in...' : 'Sign In'}
           </button>
         </div>
 
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             {"Don't have an account? "}
-            <Link
-              to={"/signup"}
-              className="text-indigo-600 hover:text-indigo-500 font-semibold"
-            >
+            <Link to={'/signup'} className="text-indigo-600 hover:text-indigo-500 font-semibold">
               Sign up
             </Link>
           </p>

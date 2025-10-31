@@ -11,10 +11,13 @@ import {
   UpdatedAt,
   BeforeCreate,
   BeforeUpdate,
+  AfterCreate,
+  AfterDestroy,
 } from "sequelize-typescript";
 import { AssetMetadata } from "../types/Asset";
 import User from "./User";
 import minioService from "../services/minioService";
+import { Op, Sequelize } from "sequelize";
 
 @Table({
   tableName: "assets",
@@ -124,6 +127,13 @@ export default class Asset extends Model {
   })
   uploadDate!: Date;
 
+  @Default(DataType.NOW)
+  @Column({
+    type: DataType.DATE,
+    allowNull: false,
+  })
+  lastDownloadedAt!: Date;
+
   @Default(0)
   @Column({
     type: DataType.INTEGER,
@@ -160,7 +170,7 @@ export default class Asset extends Model {
   })
   owner_id!: string;
 
-  @BelongsTo(() => User, "owner_id")
+  @BelongsTo(() => User, { foreignKey: "owner_id", as: "owner" })
   owner!: User;
 
   @CreatedAt
@@ -240,5 +250,149 @@ export default class Asset extends Model {
         "Invalid storage path format. Expected: bucket/objectName",
       );
     }
+  }
+
+  @AfterCreate
+  static async updateUserStorageOnCreate(instance: Asset) {
+    const user = await User.findByPk(instance.owner_id);
+    if (user) {
+      await user.updateStorageUsed(Number(instance.size));
+    }
+  }
+
+  @AfterDestroy
+  static async updateUserStorageOnDestroy(instance: Asset) {
+    const user = await User.findByPk(instance.owner_id);
+    if (user) {
+      await user.updateStorageUsed(-Number(instance.size));
+    }
+  }
+
+  static async getTotalStorage(): Promise<number> {
+    const result = await Asset.aggregate("size", "sum", {
+      plain: false,
+    });
+    return (result && result[0]?.sum) || 0;
+  }
+
+  static async getTotalDownloads(): Promise<number> {
+    const result = await Asset.aggregate("downloadCount", "sum", {
+      plain: false,
+    });
+    return (result && result[0]?.sum) || 0;
+  }
+
+  static async getAssetTypeBreakdown(): Promise<any> {
+    const result = await Asset.findAll({
+      attributes: [
+        "mimeType",
+        [Sequelize.fn("COUNT", Sequelize.col("id")), "count"],
+      ],
+      group: ["mimeType"],
+    });
+
+    return result.map((item: any) => ({
+      mimeType: item.mimeType,
+      count: item.get("count"),
+    }));
+  }
+
+  static async countDocuments(
+    where: Record<string, any> = {},
+  ): Promise<number> {
+    return await Asset.count({ where });
+  }
+
+  async incrementDownloadCount(): Promise<void> {
+    this.downloadCount += 1;
+    this.lastDownloadedAt = new Date();
+    await this.save();
+  }
+
+  static async getAssetsByUser(
+    userId: string,
+    options: any = {},
+  ): Promise<Asset[]> {
+    return Asset.findAll({
+      where: { owner_id: userId },
+      ...options,
+    });
+  }
+
+  static async getRecentAssets(limit: number = 10): Promise<Asset[]> {
+    return Asset.findAll({
+      order: [["createdAt", "DESC"]],
+      limit,
+      include: [
+        {
+          model: User,
+          as: "uploader",
+          attributes: ["id", "name", "email"],
+        },
+      ],
+    });
+  }
+
+  static async searchAssets(searchTerm: string): Promise<Asset[]> {
+    return Asset.findAll({
+      where: {
+        [Op.or]: [
+          { filename: { [Op.iLike]: `%${searchTerm}%` } },
+          { originalName: { [Op.iLike]: `%${searchTerm}%` } },
+          { description: { [Op.iLike]: `%${searchTerm}%` } },
+        ],
+      },
+    });
+  }
+
+  static async getAssetsByStatus(
+    status: "pending" | "processing" | "completed" | "failed",
+  ): Promise<Asset[]> {
+    return Asset.findAll({
+      where: { processingStatus: status },
+    });
+  }
+
+  async updateProcessingStatus(
+    status: "pending" | "processing" | "completed" | "failed",
+    error?: string,
+  ): Promise<void> {
+    this.status = status;
+    if (error) {
+      this.errorMessage = error;
+    }
+    await this.save();
+  }
+
+  static async getStorageStatsByUser(): Promise<any[]> {
+    return Asset.findAll({
+      attributes: [
+        "owner_id",
+        [Sequelize.fn("SUM", Sequelize.col("size")), "totalSize"],
+        [Sequelize.fn("COUNT", Sequelize.col("id")), "assetCount"],
+      ],
+      group: ["owner_id"],
+      include: [
+        {
+          model: User,
+          as: "owner",
+          attributes: ["name", "email"],
+        },
+      ],
+    });
+  }
+
+  static async getMostDownloadedAssets(limit: number = 10): Promise<Asset[]> {
+    return Asset.findAll({
+      order: [["downloadCount", "DESC"]],
+      limit,
+      include: [
+        {
+          model: User,
+          as: "uploader",
+          attributes: ["id", "name", "email"],
+        },
+      ],
+    });
   }
 }
