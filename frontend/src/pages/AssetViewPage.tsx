@@ -1,23 +1,23 @@
-import React from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useAsset, useDeleteAsset } from "../hooks/useAsset";
-import { useAuthContext } from "../context/AuthContext";
-import AssetPreview from "../components/AssetPreview";
-import AssetDetails from "../components/AssetDetails";
-import assetApi from "../services/asset";
+import React from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useAsset, useDeleteAsset } from '../hooks/useAsset';
+import { useAuthContext } from '../context/AuthContext';
+import AssetPreview from '../components/AssetPreview';
+import AssetDetails from '../components/AssetDetails';
+import assetApi from '../services/asset-service';
 
 const AssetViewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthContext();
-  const { data: asset, isLoading, isError, error } = useAsset(id || "");
+  const { data: asset, isLoading, isError, error, refetch } = useAsset(id || '');
   const { mutate: deleteAsset, isPending } = useDeleteAsset();
 
   const isOwner = user?.id === asset?.owner_id;
 
   const handleDelete = () => {
-    if (window.confirm("Are you sure you want to delete this asset?")) {
-      deleteAsset(id || "", { onSuccess: () => navigate("/gallery") });
+    if (window.confirm('Are you sure you want to delete this asset?')) {
+      deleteAsset(id || '', { onSuccess: () => navigate('/gallery') });
     }
   };
 
@@ -33,13 +33,13 @@ const AssetViewPage: React.FC = () => {
       <div className="min-h-screen bg-gray-50 pt-24 pb-20 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-            Error loading asset: {(error as any)?.message || "Asset not found"}
+            Error loading asset: {(error as any)?.message || 'Asset not found'}
           </div>
           <button
-            onClick={() => navigate("/gallery")}
+            onClick={() => navigate(-1)}
             className="mt-4 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
           >
-            Back to Gallery
+            Back
           </button>
         </div>
       </div>
@@ -51,10 +51,10 @@ const AssetViewPage: React.FC = () => {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <button
-            onClick={() => navigate("/gallery")}
+            onClick={() => navigate(-1)}
             className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
           >
-            ← Back to Gallery
+            ← Back
           </button>
           {isOwner && (
             <button
@@ -62,14 +62,14 @@ const AssetViewPage: React.FC = () => {
               disabled={isPending}
               className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
             >
-              {isPending ? "Deleting..." : "Delete Asset"}
+              {isPending ? 'Deleting...' : 'Delete Asset'}
             </button>
           )}
         </div>
 
         {/* Main */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <AssetPreview asset={asset} />
+          <AssetPreview asset={asset} refetch={refetch} />
           <AssetDetails asset={asset} />
         </div>
 
@@ -86,12 +86,10 @@ const AssetViewPage: React.FC = () => {
                 />
                 <div className="p-2 bg-gray-50">
                   <p className="text-xs text-gray-600 truncate">
-                    {asset.thumbnailPath?.split("/").pop() || "thumbnail.jpg"}
+                    {asset.thumbnailPath?.split('/').pop() || 'thumbnail.jpg'}
                   </p>
                   <button
-                    onClick={() =>
-                      assetApi.downloadAsset(asset.id, "thumbnail")
-                    }
+                    onClick={() => assetApi.downloadAsset(asset.id, 'thumbnail')}
                     className="w-full mt-1 px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
                   >
                     Download

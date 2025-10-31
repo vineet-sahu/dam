@@ -2,7 +2,7 @@ import {
   BelongsToManyAddAssociationMixin,
   BelongsToManySetAssociationsMixin,
   Model,
-} from "sequelize";
+} from 'sequelize';
 
 export interface IUser {
   id: string;
@@ -12,6 +12,8 @@ export interface IUser {
   team_id?: string | null;
   created_at: Date;
   updated_at: Date;
+
+  isAdmin(): Promise<boolean>;
 
   addRole: BelongsToManyAddAssociationMixin<Model, string>;
   setRoles: BelongsToManySetAssociationsMixin<Model, string>;

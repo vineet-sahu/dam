@@ -1,14 +1,14 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { Asset, UploadAssetParams } from "../types/Asset";
-import { toast } from "react-toastify";
-import assetApi, { GetAssetsParams } from "../services/asset";
+import { Asset, UploadAssetParams } from '../types/Asset';
+import { toast } from 'react-toastify';
+import assetApi, { GetAssetsParams } from '../services/asset-service';
 
 export const assetKeys = {
-  all: ["assets"] as const,
-  lists: () => [...assetKeys.all, "list"] as const,
+  all: ['assets'] as const,
+  lists: () => [...assetKeys.all, 'list'] as const,
   list: (params: GetAssetsParams) => [...assetKeys.lists(), params] as const,
-  details: () => [...assetKeys.all, "detail"] as const,
+  details: () => [...assetKeys.all, 'detail'] as const,
   detail: (id: string) => [...assetKeys.details(), id] as const,
 };
 
@@ -35,15 +35,15 @@ export const useUploadAsset = () => {
   return useMutation({
     mutationFn: (params: UploadAssetParams) => assetApi.uploadAsset(params),
     onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries({ queryKey: ["assets", "list"] });
+      queryClient.invalidateQueries({ queryKey: ['assets', 'list'] });
 
       if (!variables.onProgress) {
-        toast.success("Asset uploaded successfully!");
+        toast.success('Asset uploaded successfully!');
       }
     },
     onError: (error: any, variables, context) => {
       if (!variables.onProgress) {
-        toast.error(error.response?.data?.message || "Failed to upload asset");
+        toast.error(error.response?.data?.message || 'Failed to upload asset');
       }
     },
   });
@@ -56,14 +56,14 @@ export const useUpdateAsset = () => {
     mutationFn: ({ id, updates }: { id: string; updates: Partial<Asset> }) =>
       assetApi.updateAsset(id, updates),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["assets", "list"] });
+      queryClient.invalidateQueries({ queryKey: ['assets', 'list'] });
       queryClient.invalidateQueries({
-        queryKey: ["assets", "detail", data.id],
+        queryKey: ['assets', 'detail', data.id],
       });
-      toast.success("Asset updated successfully!");
+      toast.success('Asset updated successfully!');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to update asset");
+      toast.error(error.response?.data?.message || 'Failed to update asset');
     },
   });
 };
@@ -74,11 +74,11 @@ export const useDeleteAsset = () => {
   return useMutation<void, any, string>({
     mutationFn: (id: string) => assetApi.deleteAsset(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["assets", "list"] });
-      toast.success("Asset deleted successfully!");
+      queryClient.invalidateQueries({ queryKey: ['assets', 'list'] });
+      toast.success('Asset deleted successfully!');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to delete asset");
+      toast.error(error.response?.data?.message || 'Failed to delete asset');
     },
   });
 };
@@ -86,11 +86,11 @@ export const useDeleteAsset = () => {
 export const useDownloadAsset = () => {
   return useMutation({
     mutationFn: (id: string) => assetApi.downloadAsset(id),
-    onSuccess: (url) => {
-      window.open(url, "_blank");
+    onSuccess: (_) => {
+      toast.success('Asset download started!');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Failed to download asset");
+      toast.error(error.response?.data?.message || 'Failed to download asset');
     },
   });
 };

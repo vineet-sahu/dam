@@ -9,15 +9,17 @@ import {
   CreatedAt,
   UpdatedAt,
   HasMany,
-} from "sequelize-typescript";
-import { Op, Sequelize } from "sequelize";
-import UserRole from "./UserRole";
-import Role from "./Role";
-import Asset from "./Asset";
-import bcrypt from "bcryptjs";
+  ForeignKey,
+  BelongsTo,
+} from 'sequelize-typescript';
+import { Op, Sequelize } from 'sequelize';
+import UserRole from './UserRole';
+import Role from './Role';
+import Asset from './Asset';
+import bcrypt from 'bcryptjs';
 
 @Table({
-  tableName: "users",
+  tableName: 'users',
   timestamps: true,
   underscored: true,
 })
@@ -64,17 +66,17 @@ export default class User extends Model {
   @Column({
     type: DataType.STRING,
     allowNull: false,
-    defaultValue: "active",
+    defaultValue: 'active',
     validate: {
-      isIn: [["active", "inactive", "suspended"]],
+      isIn: [['active', 'inactive', 'suspended']],
     },
   })
-  status!: "active" | "inactive" | "suspended";
+  status!: 'active' | 'inactive' | 'suspended';
 
   @Column({
     type: DataType.STRING,
     allowNull: true,
-    comment: "Avatar URL or path",
+    comment: 'Avatar URL or path',
   })
   avatar!: string | null;
 
@@ -82,7 +84,7 @@ export default class User extends Model {
   @Column({
     type: DataType.BIGINT,
     allowNull: false,
-    comment: "Storage used in bytes",
+    comment: 'Storage used in bytes',
   })
   storageUsed!: number;
 
@@ -90,14 +92,24 @@ export default class User extends Model {
   @Column({
     type: DataType.BIGINT,
     allowNull: false,
-    comment: "Storage limit in bytes",
+    comment: 'Storage limit in bytes',
   })
   storageLimit!: number;
 
-  @BelongsToMany(() => Role, () => UserRole, "user_id", "role_id")
+  @BelongsToMany(() => Role, () => UserRole, 'user_id', 'role_id')
   roles!: Role[];
 
-  @HasMany(() => Asset, "owner_id")
+  @ForeignKey(() => Role)
+  @Column({
+    type: DataType.UUID,
+    allowNull: true,
+  })
+  role_id!: string | null;
+
+  @BelongsTo(() => Role)
+  role!: Role;
+
+  @HasMany(() => Asset, 'owner_id')
   assets!: Asset[];
 
   @CreatedAt
@@ -117,18 +129,14 @@ export default class User extends Model {
   }
 
   async assignRole(role: Role): Promise<void> {
-    await this.$set("roles", [...this.roles, role]);
+    await this.$set('roles', [...this.roles, role]);
   }
 
   async getRoles(): Promise<Role[]> {
     return this.roles;
   }
 
-  static async createUser(
-    name: string,
-    email: string,
-    password: string,
-  ): Promise<User> {
+  static async createUser(name: string, email: string, password: string): Promise<User> {
     const password_hash = await bcrypt.hash(password, 10);
     return User.create({
       name,
@@ -172,10 +180,7 @@ export default class User extends Model {
     return false;
   }
 
-  static async bulkUpdateUsers(
-    ids: string[],
-    updates: any,
-  ): Promise<{ modifiedCount: number }> {
+  static async bulkUpdateUsers(ids: string[], updates: any): Promise<{ modifiedCount: number }> {
     const [affectedCount] = await User.update(updates, {
       where: {
         id: {
@@ -187,22 +192,29 @@ export default class User extends Model {
   }
 
   async toggleStatus(): Promise<void> {
-    if (this.status === "active") {
-      this.status = "inactive";
+    if (this.status === 'active') {
+      this.status = 'inactive';
     } else {
-      this.status = "active";
+      this.status = 'active';
     }
     await this.save();
   }
 
   isActive(): boolean {
-    return this.status === "active";
+    return this.status === 'active';
   }
 
-  static async findByIdAndUpdate(
-    id: string,
-    updates: any,
-  ): Promise<User | null> {
+  async isAdmin(): Promise<boolean> {
+    if (!this.role) {
+      return false;
+    }
+
+    const userRole = this.role.identifier || this.role.name;
+
+    return userRole.toLowerCase() === 'admin';
+  }
+
+  static async findByIdAndUpdate(id: string, updates: any): Promise<User | null> {
     const user = await User.findByPk(id);
     if (user) {
       await user.update(updates);
@@ -223,16 +235,14 @@ export default class User extends Model {
   static async getUsersWithStorageStats(): Promise<any[]> {
     return User.findAll({
       attributes: [
-        "id",
-        "name",
-        "email",
-        "storageUsed",
-        "storageLimit",
+        'id',
+        'name',
+        'email',
+        'storageUsed',
+        'storageLimit',
         [
-          Sequelize.literal(
-            '(CAST("storageUsed" AS FLOAT) / CAST("storageLimit" AS FLOAT) * 100)',
-          ),
-          "storagePercentage",
+          Sequelize.literal('(CAST("storageUsed" AS FLOAT) / CAST("storageLimit" AS FLOAT) * 100)'),
+          'storagePercentage',
         ],
       ],
     });

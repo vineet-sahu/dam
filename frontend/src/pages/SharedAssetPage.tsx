@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import api from "../services/api";
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import api from '../services/api';
+import { saveFileAsBlob } from '../utils/file-utils';
 
 interface AssetData {
   id: string;
@@ -24,11 +25,11 @@ const SharedAssetPage: React.FC = () => {
   const [asset, setAsset] = useState<AssetData | null>(null);
   const [shareInfo, setShareInfo] = useState<ShareInfo | null>(null);
   const [requiresPassword, setRequiresPassword] = useState(false);
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchSharedAsset();
@@ -36,7 +37,7 @@ const SharedAssetPage: React.FC = () => {
 
   const fetchSharedAsset = async () => {
     setIsLoading(true);
-    setError("");
+    setError('');
 
     try {
       const response = await api.get(`/share/${token}`);
@@ -49,8 +50,7 @@ const SharedAssetPage: React.FC = () => {
         setAsset(data.asset);
       }
     } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.message || "Failed to load shared asset";
+      const errorMessage = err.response?.data?.message || 'Failed to load shared asset';
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -60,7 +60,7 @@ const SharedAssetPage: React.FC = () => {
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsVerifying(true);
-    setError("");
+    setError('');
 
     try {
       const response = await api.post(`/share/${token}/verify`, { password });
@@ -70,7 +70,7 @@ const SharedAssetPage: React.FC = () => {
       setShareInfo(data.shareInfo);
       setRequiresPassword(false);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Invalid password");
+      setError(err.response?.data?.message || 'Invalid password');
     } finally {
       setIsVerifying(false);
     }
@@ -78,7 +78,7 @@ const SharedAssetPage: React.FC = () => {
 
   const handleDownload = async () => {
     setIsDownloading(true);
-    setError("");
+    setError('');
 
     try {
       const response = await api.get(`/share/${token}/download`);
@@ -86,26 +86,16 @@ const SharedAssetPage: React.FC = () => {
 
       const fileResponse = await fetch(data.downloadUrl);
       if (!fileResponse.ok) {
-        throw new Error("Failed to download file");
+        throw new Error('Failed to download file');
       }
 
-      const blob = await fileResponse.blob();
-
-      const link = document.createElement("a");
-      const blobUrl = window.URL.createObjectURL(blob);
-      link.href = blobUrl;
-      link.download = data.filename;
-      document.body.appendChild(link);
-      link.click();
-
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(blobUrl);
-
+      await saveFileAsBlob(fileResponse);
+      console.log('shareInfo?.remainingDownloads ', shareInfo?.remainingDownloads);
       if (shareInfo?.remainingDownloads !== null) {
         fetchSharedAsset();
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to download file");
+      setError(err.response?.data?.message || 'Failed to download file');
     } finally {
       setIsDownloading(false);
     }
@@ -113,9 +103,9 @@ const SharedAssetPage: React.FC = () => {
 
   const formatFileSize = (bytes: string | number) => {
     const numBytes = Number(bytes);
-    if (numBytes < 1024) return numBytes + " B";
-    if (numBytes < 1024 * 1024) return (numBytes / 1024).toFixed(2) + " KB";
-    return (numBytes / 1024 / 1024).toFixed(2) + " MB";
+    if (numBytes < 1024) return numBytes + ' B';
+    if (numBytes < 1024 * 1024) return (numBytes / 1024).toFixed(2) + ' KB';
+    return (numBytes / 1024 / 1024).toFixed(2) + ' MB';
   };
 
   const formatDate = (dateString: string) => {
@@ -139,13 +129,9 @@ const SharedAssetPage: React.FC = () => {
         <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
           <div className="text-center">
             <div className="text-6xl mb-4">⚠️</div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">
-              Unable to Access
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Unable to Access</h2>
             <p className="text-gray-600 mb-4">{error}</p>
-            <p className="text-sm text-gray-500">
-              This link may have expired or been revoked.
-            </p>
+            <p className="text-sm text-gray-500">This link may have expired or been revoked.</p>
           </div>
         </div>
       </div>
@@ -158,12 +144,9 @@ const SharedAssetPage: React.FC = () => {
         <div className="max-w-md w-full bg-white rounded-lg shadow-md p-6">
           <div className="text-center mb-6">
             <div className="text-6xl mb-4">🔒</div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">
-              Password Protected
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Password Protected</h2>
             <p className="text-gray-600">
-              This shared asset is protected. Please enter the password to
-              continue.
+              This shared asset is protected. Please enter the password to continue.
             </p>
           </div>
 
@@ -190,7 +173,7 @@ const SharedAssetPage: React.FC = () => {
               disabled={isVerifying || !password}
               className="w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {isVerifying ? "Verifying..." : "Access Asset"}
+              {isVerifying ? 'Verifying...' : 'Access Asset'}
             </button>
           </form>
         </div>
@@ -221,7 +204,7 @@ const SharedAssetPage: React.FC = () => {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-sm text-blue-700">
                   📊 {shareInfo.remainingDownloads} download
-                  {shareInfo.remainingDownloads !== 1 ? "s" : ""} remaining
+                  {shareInfo.remainingDownloads !== 1 ? 's' : ''} remaining
                 </p>
               </div>
             )}
@@ -231,14 +214,14 @@ const SharedAssetPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-bold mb-4">Preview</h2>
           <div className="bg-gray-100 rounded-lg overflow-hidden mb-4">
-            {asset.type === "image" && (
+            {asset.type === 'image' && (
               <img
                 src={asset.url}
                 alt={asset.name}
                 className="w-full h-auto max-h-96 object-contain"
               />
             )}
-            {asset.type === "video" && (
+            {asset.type === 'video' && (
               <video
                 src={asset.url}
                 controls
@@ -250,7 +233,7 @@ const SharedAssetPage: React.FC = () => {
                 Your browser does not support the video tag.
               </video>
             )}
-            {asset.type === "audio" && (
+            {asset.type === 'audio' && (
               <div className="p-8 flex flex-col items-center justify-center">
                 <div className="text-6xl mb-4">🎵</div>
                 <audio
@@ -264,7 +247,7 @@ const SharedAssetPage: React.FC = () => {
                 </audio>
               </div>
             )}
-            {asset.type === "document" && (
+            {asset.type === 'document' && (
               <div className="p-8 flex flex-col items-center justify-center h-64">
                 <div className="text-6xl mb-4">📄</div>
                 <p className="text-gray-600">Document Preview</p>
@@ -286,7 +269,7 @@ const SharedAssetPage: React.FC = () => {
                 className="w-full px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center justify-center space-x-2"
               >
                 <span>⬇</span>
-                <span>{isDownloading ? "Downloading..." : "Download"}</span>
+                <span>{isDownloading ? 'Downloading...' : 'Download'}</span>
               </button>
             </>
           )}
@@ -321,10 +304,7 @@ const SharedAssetPage: React.FC = () => {
                 <p className="text-sm text-gray-500">Duration</p>
                 <p className="font-medium">
                   {Math.floor(asset.metadata.duration / 60)}:
-                  {String(Math.floor(asset.metadata.duration % 60)).padStart(
-                    2,
-                    "0",
-                  )}
+                  {String(Math.floor(asset.metadata.duration % 60)).padStart(2, '0')}
                 </p>
               </div>
             )}

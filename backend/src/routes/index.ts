@@ -1,13 +1,16 @@
-import express from "express";
-import authRoutes from "./authRoutes";
-import assetRoutes from "./assetRoutes";
-import shareRoutes from "./shareRoutes";
+import express from 'express';
+import authRoutes from './auth.routes';
+import assetRoutes from './asset.routes';
+import shareRoutes from './share.routes';
+import adminRoutes from './admin.routes';
 
 const router = express.Router();
 
-router.use("/auth", authRoutes);
-router.use("/assets", assetRoutes);
+router.use('/auth', authRoutes);
+router.use('/assets', assetRoutes);
 
-router.use("/", shareRoutes);
+router.use('/', shareRoutes);
+
+router.use('/admin', adminRoutes);
 
 export default router;

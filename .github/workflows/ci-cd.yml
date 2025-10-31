@@ -174,7 +174,7 @@ jobs:
 
     - name: Deploy to production
       run: |
-        echo "✅ Build successful! Ready for deployment."
+        echo " Build successful! Ready for deployment."
         echo "Add your deployment commands here when ready"
         # Examples:
         # - scp -r backend/dist user@server:/var/www/backend
