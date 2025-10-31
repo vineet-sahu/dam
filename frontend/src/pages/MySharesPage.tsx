@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
-import api from "../services/api";
+import React, { useEffect, useState } from 'react';
+import { NavLink } from 'react-router-dom';
+import api from '../services/api';
 
 interface ShareLink {
   id: string;
@@ -25,7 +25,7 @@ interface ShareLink {
 const MySharesPage: React.FC = () => {
   const [shareLinks, setShareLinks] = useState<ShareLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,13 +34,13 @@ const MySharesPage: React.FC = () => {
 
   const fetchShareLinks = async () => {
     setIsLoading(true);
-    setError("");
+    setError('');
 
     try {
-      const response = await api.get("/share/my-shares");
+      const response = await api.get('/share/my-shares');
       setShareLinks(response.data.shareLinks);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to fetch share links");
+      setError(err.response?.data?.message || 'Failed to fetch share links');
     } finally {
       setIsLoading(false);
     }
@@ -53,7 +53,7 @@ const MySharesPage: React.FC = () => {
   };
 
   const handleRevokeLink = async (token: string) => {
-    if (!window.confirm("Are you sure you want to revoke this share link?")) {
+    if (!window.confirm('Are you sure you want to revoke this share link?')) {
       return;
     }
 
@@ -61,7 +61,7 @@ const MySharesPage: React.FC = () => {
       await api.delete(`/share/${token}`);
       setShareLinks(shareLinks.filter((link) => link.token !== token));
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to revoke link");
+      alert(err.response?.data?.message || 'Failed to revoke link');
     }
   };
 
@@ -80,7 +80,6 @@ const MySharesPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 pt-24 pb-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">My Shared Links</h1>
           <NavLink
@@ -100,9 +99,7 @@ const MySharesPage: React.FC = () => {
         {shareLinks.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-12 text-center">
             <div className="text-6xl mb-4">🔗</div>
-            <h2 className="text-xl font-bold text-gray-800 mb-2">
-              No Share Links Yet
-            </h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-2">No Share Links Yet</h2>
             <p className="text-gray-600 mb-6">
               Share your assets with others by creating share links
             </p>
@@ -119,21 +116,17 @@ const MySharesPage: React.FC = () => {
               <div
                 key={link.id}
                 className={`bg-white rounded-lg shadow-md p-6 ${
-                  link.isExpired ? "opacity-60" : ""
+                  link.isExpired ? 'opacity-60' : ''
                 }`}
               >
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                  {/* Asset Info */}
                   <div className="flex items-center space-x-4 flex-1">
-                    <NavLink
-                      to={`/asset/${link.asset.id}`}
-                      className="flex-shrink-0"
-                    >
+                    <NavLink to={`/asset/${link.asset.id}`} className="flex-shrink-0">
                       <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center text-2xl">
-                        {link.asset.type === "video" && "🎥"}
-                        {link.asset.type === "image" && "🖼️"}
-                        {link.asset.type === "audio" && "🎵"}
-                        {link.asset.type === "document" && "📄"}
+                        {link.asset.type === 'video' && '🎥'}
+                        {link.asset.type === 'image' && '🖼️'}
+                        {link.asset.type === 'audio' && '🎵'}
+                        {link.asset.type === 'document' && '📄'}
                       </div>
                     </NavLink>
                     <div className="flex-1 min-w-0">
@@ -143,13 +136,10 @@ const MySharesPage: React.FC = () => {
                       >
                         {link.asset.name}
                       </NavLink>
-                      <p className="text-sm text-gray-500">
-                        Created: {formatDate(link.createdAt)}
-                      </p>
+                      <p className="text-sm text-gray-500">Created: {formatDate(link.createdAt)}</p>
                     </div>
                   </div>
 
-                  {/* Share Info */}
                   <div className="flex flex-wrap gap-2 items-center">
                     {link.isExpired && (
                       <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded">
@@ -181,17 +171,16 @@ const MySharesPage: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex space-x-2">
                     <button
                       onClick={() => handleCopyLink(link.url, link.id)}
                       className={`px-4 py-2 rounded text-sm font-medium transition ${
                         copiedId === link.id
-                          ? "bg-green-500 text-white"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                          ? 'bg-green-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                       }`}
                     >
-                      {copiedId === link.id ? "✓ Copied" : "Copy Link"}
+                      {copiedId === link.id ? '✓ Copied' : 'Copy Link'}
                     </button>
                     <button
                       onClick={() => handleRevokeLink(link.token)}
@@ -202,14 +191,11 @@ const MySharesPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Full URL (collapsed by default) */}
                 <details className="mt-4">
                   <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800">
                     Show full URL
                   </summary>
-                  <div className="mt-2 p-3 bg-gray-50 rounded text-sm break-all">
-                    {link.url}
-                  </div>
+                  <div className="mt-2 p-3 bg-gray-50 rounded text-sm break-all">{link.url}</div>
                 </details>
               </div>
             ))}

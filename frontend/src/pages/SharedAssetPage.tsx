@@ -188,7 +188,6 @@ const SharedAssetPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8 min-h-screen bg-gray-50 pt-24 pb-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold text-gray-800">Shared Asset</h1>
@@ -210,7 +209,6 @@ const SharedAssetPage: React.FC = () => {
             )}
         </div>
 
-        {/* Asset Preview */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-bold mb-4">Preview</h2>
           <div className="bg-gray-100 rounded-lg overflow-hidden mb-4">
@@ -255,7 +253,6 @@ const SharedAssetPage: React.FC = () => {
             )}
           </div>
 
-          {/* Download Button */}
           {shareInfo?.allowDownload && (
             <>
               {error && (
@@ -283,7 +280,6 @@ const SharedAssetPage: React.FC = () => {
           )}
         </div>
 
-        {/* Asset Details */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-bold mb-4">Details</h2>
           <div className="space-y-3">
@@ -319,7 +315,6 @@ const SharedAssetPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="text-center mt-8 text-sm text-gray-500">
           <p>Shared via Digital Asset Management System</p>
         </div>

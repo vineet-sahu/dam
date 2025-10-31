@@ -48,7 +48,6 @@ const AssetViewPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 pt-24 pb-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <button
             onClick={() => navigate(-1)}
@@ -67,13 +66,11 @@ const AssetViewPage: React.FC = () => {
           )}
         </div>
 
-        {/* Main */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <AssetPreview asset={asset} refetch={refetch} />
           <AssetDetails asset={asset} />
         </div>
 
-        {/* Additional sections */}
         {asset.thumbnailUrl && (
           <div className="mt-6 bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-bold mb-4">Thumbnail</h2>
