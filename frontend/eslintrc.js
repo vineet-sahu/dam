@@ -2,7 +2,7 @@ module.exports = {
   root: true,
   parser: "@typescript-eslint/parser",
   parserOptions: {
-    project: "./tsconfig.eslint.json", // <- use the dedicated TSConfig
+    project: "./tsconfig.eslint.json",
     tsconfigRootDir: __dirname,
     ecmaVersion: 2020,
     sourceType: "module",
@@ -21,6 +21,18 @@ module.exports = {
     browser: true,
     node: true,
     es2021: true,
+    "jest": true ,
   },
   ignorePatterns: ["dist/", "node_modules/"],
+  overrides: [
+    {
+      files: ['*.js'],
+      rules: {
+        '@typescript-eslint/no-var-requires': 'off',
+      },
+      parserOptions: {
+        project: null,
+      },
+    },
+  ]
 };

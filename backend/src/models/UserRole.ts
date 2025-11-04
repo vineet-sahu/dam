@@ -7,12 +7,12 @@ import {
   BelongsTo,
   PrimaryKey,
   AutoIncrement,
-} from "sequelize-typescript";
-import User from "./User";
-import Role from "./Role";
+} from 'sequelize-typescript';
+import User from './User';
+import Role from './Role';
 
 @Table({
-  tableName: "user_roles",
+  tableName: 'user_roles',
   timestamps: false,
 })
 export default class UserRole extends Model {
@@ -35,9 +35,9 @@ export default class UserRole extends Model {
   })
   role_id!: string;
 
-  @BelongsTo(() => User, "user_id")
+  @BelongsTo(() => User, 'user_id')
   user!: User;
 
-  @BelongsTo(() => Role, "role_id")
+  @BelongsTo(() => Role, 'role_id')
   role!: Role;
 }

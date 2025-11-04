@@ -1,4 +1,4 @@
-import { Request } from "express";
+import { Request } from 'express';
 
 declare global {
   namespace Express {
@@ -8,8 +8,8 @@ declare global {
       id?: string;
       user?: {
         id: string;
-        email: string;
-        role: string;
+        email?: string;
+        role?: string;
       };
     }
   }

@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Coverage
+coverage/
+
+# Config files - don't lint these
+*.config.js
+.eslintrc.js
+jest.config.js
+
+# Environment files
+.env
+.env.*
+
+# Logs
+*.log

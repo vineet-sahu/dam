@@ -1,8 +1,8 @@
 /* eslint-disable no-undef */
-import multer from "multer";
-import express from "express";
-import minioService from "../services/minioService";
-import logger from "../utils/logger";
+import multer from 'multer';
+import express from 'express';
+import minioService from '../services/minioService';
+import logger from '../utils/logger';
 
 interface MinioUploadedFile {
   fieldname: string;
@@ -26,40 +26,31 @@ declare global {
 }
 
 const ALLOWED_IMAGE_TYPES = (
-  process.env.ALLOWED_IMAGE_TYPES || "image/jpeg,image/png,image/gif,image/webp"
-).split(",");
+  process.env.ALLOWED_IMAGE_TYPES || 'image/jpeg,image/png,image/gif,image/webp'
+).split(',');
 
 const ALLOWED_VIDEO_TYPES = (
-  process.env.ALLOWED_VIDEO_TYPES ||
-  "video/mp4,video/mpeg,video/quicktime,video/x-msvideo"
-).split(",");
+  process.env.ALLOWED_VIDEO_TYPES || 'video/mp4,video/mpeg,video/quicktime,video/x-msvideo'
+).split(',');
 
 const ALLOWED_DOCUMENT_TYPES = (
   process.env.ALLOWED_DOCUMENT_TYPES ||
-  "application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
-).split(",");
+  'application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain'
+).split(',');
 
-const ALLOWED_TYPES = [
-  ...ALLOWED_IMAGE_TYPES,
-  ...ALLOWED_VIDEO_TYPES,
-  ...ALLOWED_DOCUMENT_TYPES,
-];
+const ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES, ...ALLOWED_DOCUMENT_TYPES];
 
-const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || "524288000", 10);
+const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || '524288000', 10);
 
 const fileFilter = (
   _: express.Request,
-  file: Express.Request["file"],
+  file: Express.Request['file'],
   cb: multer.FileFilterCallback,
 ) => {
   if (ALLOWED_TYPES.includes(`${file?.mimetype}`)) {
     cb(null, true);
   } else {
-    cb(
-      new Error(
-        `File type not allowed. Allowed types: ${ALLOWED_TYPES.join(", ")}`,
-      ),
-    );
+    cb(new Error(`File type not allowed. Allowed types: ${ALLOWED_TYPES.join(', ')}`));
   }
 };
 
@@ -74,8 +65,8 @@ export const upload = multer({
   fileFilter,
 });
 
-export const uploadSingle = upload.single("file");
-export const uploadMultiple = upload.array("files", 10);
+export const uploadSingle = upload.single('file');
+export const uploadMultiple = upload.array('files', 10);
 
 const getBucketForFileType = (mimetype: string): string => {
   if (ALLOWED_VIDEO_TYPES.includes(mimetype)) {
@@ -96,7 +87,7 @@ export const processMinioUploadSingle = async (
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: "No file uploaded",
+        message: 'No file uploaded',
       });
     }
 
@@ -124,10 +115,10 @@ export const processMinioUploadSingle = async (
     next();
     return;
   } catch (error) {
-    logger.error("MinIO upload error:", error);
+    logger.error('MinIO upload error:', error);
     return res.status(500).json({
       success: false,
-      message: "Failed to upload file to storage",
+      message: 'Failed to upload file to storage',
     });
   }
 };
@@ -139,12 +130,12 @@ export const processMinioUploadMultiple = async (
 ) => {
   try {
     // FIXED: Changed from Express.Multer.File[] to proper type
-    const files = req.files as Array<Express.Request["file"]>;
+    const files = req.files as Array<Express.Request['file']>;
 
     if (!files || files.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "No files uploaded",
+        message: 'No files uploaded',
       });
     }
 
@@ -179,10 +170,10 @@ export const processMinioUploadMultiple = async (
     next();
     return;
   } catch (error) {
-    logger.error("MinIO multiple upload error:", error);
+    logger.error('MinIO multiple upload error:', error);
     return res.status(500).json({
       success: false,
-      message: "Failed to upload files to storage",
+      message: 'Failed to upload files to storage',
     });
   }
 };
@@ -194,16 +185,16 @@ export const handleUploadError = (
   next: express.NextFunction,
 ) => {
   if (err instanceof multer.MulterError) {
-    if (err.code === "LIMIT_FILE_SIZE") {
+    if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
         success: false,
         message: `File too large. Maximum size: ${MAX_FILE_SIZE / 1024 / 1024}MB`,
       });
     }
-    if (err.code === "LIMIT_FILE_COUNT") {
+    if (err.code === 'LIMIT_FILE_COUNT') {
       return res.status(400).json({
         success: false,
-        message: "Too many files. Maximum: 10 files per express.request",
+        message: 'Too many files. Maximum: 10 files per express.request',
       });
     }
     return res.status(400).json({ success: false, message: err.message });

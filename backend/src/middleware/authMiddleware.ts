@@ -1,5 +1,5 @@
-import express from "express";
-import jwt from "jsonwebtoken";
+import express from 'express';
+import jwt from 'jsonwebtoken';
 
 const authenticate = (
   req: express.Request,
@@ -8,8 +8,8 @@ const authenticate = (
 ): void => {
   const authHeader = req.headers.authorization;
   let token: string | undefined;
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    token = authHeader.split(" ")[1];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
   }
 
   if (!token && req.cookies?.token) {
@@ -17,19 +17,19 @@ const authenticate = (
   }
 
   if (!token) {
-    res.status(401).json({ message: "No token provided" });
+    res.status(401).json({ message: 'No token provided' });
     return;
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "") as {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || '') as {
       id: string;
     };
     req.user = { id: decoded.id };
 
     next();
   } catch (error: any) {
-    res.status(401).json({ message: "Invalid or expired token", error: error });
+    res.status(401).json({ message: 'Invalid or expired token', error: error });
     return;
   }
 };

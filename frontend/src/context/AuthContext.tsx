@@ -68,7 +68,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
       },
       onError: () => {
-        // Still clear state on error
         setIsLoggedIn(false);
         setUser(null);
       },

@@ -103,18 +103,20 @@ export const me = async (
     let decoded: any;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET || '');
-    } catch (err) {
-      return res.status(401).json({ message: 'Invalid token', error: err });
+    } catch (_) {
+      return res.status(401).json({ message: 'Invalid token' });
     }
 
     const user: IUser | null = (await User.findByPk(decoded.id, {
       include: [{ model: Role, as: 'role' }],
     })) as unknown as IUser | null;
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     const isAdmin = await user.isAdmin();
+
     return res.status(200).json({
       id: user.id,
       name: user.name,

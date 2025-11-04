@@ -153,7 +153,6 @@ export const getAllAssets = async (
           );
         }
 
-        // Generate thumbnail URL
         if (asset.thumbnailPath) {
           try {
             const [thumbBucket, ...thumbPathParts] = asset.thumbnailPath.split('/');
@@ -169,7 +168,6 @@ export const getAllAssets = async (
           }
         }
 
-        // Generate transcoded URLs
         if (asset.transcodedPaths && typeof asset.transcodedPaths === 'object') {
           for (const [quality, path] of Object.entries(asset.transcodedPaths)) {
             try {
@@ -229,7 +227,6 @@ export const getAssetById = async (
 
     const assetJson = asset.toJSON();
 
-    // Generate signed URL for original asset
     const [bucketName, ...objectPathParts] = asset.storagePath.split('/');
     const objectName = objectPathParts.join('/');
     const freshUrl = await minioService.getPresignedUrl(
@@ -242,7 +239,6 @@ export const getAssetById = async (
     let thumbnailUrl: string | null = null;
     let transcodedUrls: Record<string, string> = {};
 
-    // Generate thumbnail URL
     if (asset.thumbnailPath) {
       try {
         const [thumbBucket, ...thumbPathParts] = asset.thumbnailPath.split('/');
@@ -258,7 +254,6 @@ export const getAssetById = async (
       }
     }
 
-    // Generate transcoded URLs
     if (asset.transcodedPaths && typeof asset.transcodedPaths === 'object') {
       for (const [quality, path] of Object.entries(asset.transcodedPaths)) {
         try {
@@ -321,8 +316,8 @@ export const downloadAsset = async (
 
     return res.status(200).json({
       message: 'Download URL generated successfully',
-      downloadUrl, // Changed from 'url' to 'downloadUrl' for consistency
-      filename: asset.originalName || asset.name, // Added filename
+      downloadUrl,
+      filename: asset.originalName || asset.name,
       expiresIn: expirySeconds,
     });
   } catch (error) {
@@ -331,7 +326,6 @@ export const downloadAsset = async (
   }
 };
 
-// Add these new endpoints
 export const downloadThumbnail = async (
   req: express.Request,
   res: express.Response,
@@ -397,7 +391,6 @@ export const downloadTranscodedAsset = async (
       asset.originalName,
     );
 
-    // Increment download count
     await asset.update({ downloadCount: asset.downloadCount + 1 });
 
     return res.status(200).json({
@@ -441,10 +434,8 @@ export const getAssetsByUser = async (
     const offset = (Number(page) - 1) * Number(limit);
     const filters: any[] = [];
 
-    // Add filter for assets owned by the user
     filters.push({ owner_id: userId });
 
-    // Add condition for public assets (if requested)
     if (includePublic === 'true') {
       filters.push({ visibility: 'public' });
     }
@@ -461,7 +452,6 @@ export const getAssetsByUser = async (
 
     const where: any = {};
 
-    // Combining both conditions (owner + public)
     if (filters.length > 0 && searchConditions.length > 0) {
       where[Op.or] = [
         { [Op.and]: filters },
@@ -520,7 +510,6 @@ export const getAssetsByUser = async (
           }
         }
 
-        // Generate thumbnail URL
         if (asset.thumbnailPath) {
           try {
             const [thumbBucket, ...thumbPathParts] = asset.thumbnailPath.split('/');
@@ -536,7 +525,6 @@ export const getAssetsByUser = async (
           }
         }
 
-        // Generate transcoded URLs
         if (asset.transcodedPaths && typeof asset.transcodedPaths === 'object') {
           for (const [quality, path] of Object.entries(asset.transcodedPaths)) {
             try {
@@ -609,7 +597,6 @@ export const getAssetsByType = async (
         let thumbnailUrl = '';
         let transcodedUrls = [];
 
-        // Generate signed URL for original
         try {
           const [bucketName, ...objectPathParts] = asset.storagePath.split('/');
           const objectName = objectPathParts.join('/');
@@ -623,7 +610,6 @@ export const getAssetsByType = async (
           console.error(`Failed to generate signed URL for asset ${asset.id}:`, err);
         }
 
-        // Generate thumbnail URL
         if (asset.thumbnailPath) {
           try {
             const [thumbBucket, ...thumbPathParts] = asset.thumbnailPath.split('/');
@@ -639,7 +625,6 @@ export const getAssetsByType = async (
           }
         }
 
-        // Generate transcoded URLs
         if (asset.transcodedPaths && typeof asset.transcodedPaths === 'object') {
           transcodedUrls = [];
           for (const [quality, path] of Object.entries(asset.transcodedPaths)) {
@@ -686,42 +671,42 @@ export const getAssetsByType = async (
   }
 };
 
-export const streamAsset = async (req: express.Request, res: express.Response): Promise<void> => {
-  try {
-    const { id } = req.params;
+// export const streamAsset = async (req: express.Request, res: express.Response): Promise<void> => {
+//   try {
+//     const { id } = req.params;
 
-    const asset = await Asset.findByPk(id);
-    if (!asset) {
-      res.status(404).json({ message: 'Asset not found' });
-      return;
-    }
+//     const asset = await Asset.findByPk(id);
+//     if (!asset) {
+//       res.status(404).json({ message: 'Asset not found' });
+//       return;
+//     }
 
-    const [bucketName, objectName] = asset.storagePath.split('/');
+//     const [bucketName, objectName] = asset.storagePath.split('/');
 
-    const stats = await minioService.getFileStats(bucketName, objectName);
-    const stream = await minioService.getFile(bucketName, objectName);
+//     const stats = await minioService.getFileStats(bucketName, objectName);
+//     const stream = await minioService.getFile(bucketName, objectName);
 
-    res.setHeader('Content-Type', asset.mimeType);
-    res.setHeader('Content-Length', stats.size);
-    res.setHeader('Content-Disposition', `inline; filename="${asset.originalName}"`);
-    res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Cache-Control', 'public, max-age=31536000');
+//     res.setHeader('Content-Type', asset.mimeType);
+//     res.setHeader('Content-Length', stats.size);
+//     res.setHeader('Content-Disposition', `inline; filename="${asset.originalName}"`);
+//     res.setHeader('Accept-Ranges', 'bytes');
+//     res.setHeader('Cache-Control', 'public, max-age=31536000');
 
-    stream.pipe(res);
+//     stream.pipe(res);
 
-    stream.on('error', (error) => {
-      logger.error('Stream error:', error);
-      if (!res.headersSent) {
-        res.status(500).json({ message: 'Failed to stream file' });
-      }
-    });
-  } catch (error) {
-    logger.error('Error streaming asset:', error);
-    if (!res.headersSent) {
-      res.status(500).json({ message: 'Failed to stream asset' });
-    }
-  }
-};
+//     stream.on('error', (error) => {
+//       logger.error('Stream error:', error);
+//       if (!res.headersSent) {
+//         res.status(500).json({ message: 'Failed to stream file' });
+//       }
+//     });
+//   } catch (error) {
+//     logger.error('Error streaming asset:', error);
+//     if (!res.headersSent) {
+//       res.status(500).json({ message: 'Failed to stream asset' });
+//     }
+//   }
+// };
 
 export const updateAsset = async (
   req: express.Request,
@@ -770,9 +755,6 @@ export const deleteAsset = async (
       return res.status(404).json({ message: 'Asset not found' });
     }
 
-    // console.log("Authenticated user ID:", req.user?.id);
-    // console.log("Asset owner ID:", asset.owner_id);
-
     if (req.user?.id !== asset.owner_id) {
       return res.status(403).json({ message: 'Unauthorized to delete this asset' });
     }
@@ -817,5 +799,5 @@ export default {
   updateAsset,
   deleteAsset,
   downloadAsset,
-  streamAsset,
+  // streamAsset,
 };

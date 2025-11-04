@@ -1,14 +1,7 @@
-import {
-  Table,
-  Column,
-  Model,
-  DataType,
-  PrimaryKey,
-  Default,
-} from "sequelize-typescript";
+import { Table, Column, Model, DataType, PrimaryKey, Default } from 'sequelize-typescript';
 
 @Table({
-  tableName: "roles",
+  tableName: 'roles',
   timestamps: false,
 })
 export default class Role extends Model {
@@ -22,10 +15,10 @@ export default class Role extends Model {
     allowNull: false,
     unique: true,
     validate: {
-      isIn: [["admin", "editor", "viewer"]],
+      isIn: [['admin', 'editor', 'viewer']],
     },
   })
-  name!: "admin" | "editor" | "viewer";
+  name!: 'admin' | 'editor' | 'viewer';
 
   @Column({
     type: DataType.STRING,
