@@ -84,7 +84,6 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Hero Section */}
       <section className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
@@ -98,7 +97,6 @@ const HomePage: React.FC = () => {
             Built for teams that need enterprise-grade asset management with intelligent automation.
           </p>
 
-          {/* Account Setup Section - Only shown when not logged in */}
           {!isLoggedIn && (
             <div className="max-w-2xl mx-auto mb-12 bg-slate-800/50 backdrop-blur border border-purple-500/30 rounded-xl p-8">
               <div className="flex items-center justify-center mb-4">
@@ -127,7 +125,6 @@ const HomePage: React.FC = () => {
             </div>
           )}
 
-          {/* Action Buttons Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto mb-16">
             <Link
               to={'/upload'}
@@ -153,7 +150,6 @@ const HomePage: React.FC = () => {
             </Link>
           </div>
 
-          {/* Asset Type Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {assetTypes.map((asset, idx) => (
               <div
@@ -169,7 +165,6 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Features Section */}
       <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-900/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
@@ -198,7 +193,6 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Workflow Section */}
       <section id="workflow" className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
@@ -250,7 +244,6 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* Tech Stack Section */}
       <section id="tech" className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-900/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
@@ -303,7 +296,6 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-12 shadow-2xl">

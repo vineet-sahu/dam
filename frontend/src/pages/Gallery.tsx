@@ -280,7 +280,6 @@ const GalleryPage: React.FC = () => {
         )}
       </div>
 
-      {/* Share Modal */}
       {shareModalAsset && (
         <ShareModal
           isOpen={!!shareModalAsset}
